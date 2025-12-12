@@ -145,19 +145,34 @@ func (s *QiniuService) generateKey(fileName string) string {
 
 // getPublicURL 获取公开访问 URL
 func (s *QiniuService) getPublicURL(key string) string {
-	if s.domain == "" {
-		// 如果域名为空，返回七牛云默认域名格式
-		// 格式: https://[bucket].s3.[region].qiniucs.com/[key]
-		return fmt.Sprintf("https://%s.s3.%s.qiniucs.com/%s", s.bucket, config.QiniuConfig.Region, key)
+	// 优先使用公共云访问域名
+	if config.QiniuConfig.PublicCloudDomain != "" {
+		// 移除末尾的斜杠
+		publicDomain := config.QiniuConfig.PublicCloudDomain
+		if publicDomain[len(publicDomain)-1] == '/' {
+			publicDomain = publicDomain[:len(publicDomain)-1]
+		}
+		return fmt.Sprintf("%s/%s", publicDomain, key)
 	}
 
-	// 移除末尾的斜杠
-	domain := s.domain
-	if domain[len(domain)-1] == '/' {
-		domain = domain[:len(domain)-1]
+	// 其次使用自定义域名
+	if s.domain != "" {
+		// 移除末尾的斜杠
+		domain := s.domain
+		if domain[len(domain)-1] == '/' {
+			domain = domain[:len(domain)-1]
+		}
+		return fmt.Sprintf("%s/%s", domain, key)
 	}
 
-	return fmt.Sprintf("%s/%s", domain, key)
+	// 如果都没有配置，返回七牛云默认域名格式
+	// 格式: https://[bucket].s3.[region].qiniucs.com/[key]
+	return fmt.Sprintf("https://%s.s3.%s.qiniucs.com/%s", s.bucket, config.QiniuConfig.Region, key)
+}
+
+// GetFullURL 根据文件键获取完整访问URL
+func (s *QiniuService) GetFullURL(key string) string {
+	return s.getPublicURL(key)
 }
 
 // UploadFile 上传本地文件

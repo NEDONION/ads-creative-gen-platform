@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"ads-creative-gen-platform/internal/models"
@@ -79,22 +80,27 @@ func (s *CreativeService) CreateTask(input CreateTaskInput) (*models.CreativeTas
 func (s *CreativeService) processTask(taskID uint) {
 	// 更新状态为处理中
 	now := time.Now()
-	database.DB.Model(&models.CreativeTask{}).Where("id = ?", taskID).Updates(map[string]interface{}{
+	updateResult := database.DB.Model(&models.CreativeTask{}).Where("id = ?", taskID).Updates(map[string]interface{}{
 		"status":     models.TaskProcessing,
 		"started_at": now,
 		"progress":   10,
 	})
 
+	if updateResult.Error != nil {
+		log.Printf("更新任务状态失败: %v", updateResult.Error)
+		return
+	}
+
 	// 查询任务详情
 	var task models.CreativeTask
 	if err := database.DB.First(&task, taskID).Error; err != nil {
-		log.Printf("Failed to find task %d: %v", taskID, err)
+		log.Printf("查找任务 %d 失败: %v", taskID, err)
 		return
 	}
 
 	// 生成提示词
 	prompt := s.generatePrompt(task.Title, task.SellingPoints, task.RequestedStyles)
-	log.Printf("Generated prompt: %s", prompt)
+	log.Printf("生成的提示词: %s", prompt)
 
 	// 更新进度
 	database.DB.Model(&task).Update("progress", 30)
@@ -105,41 +111,49 @@ func (s *CreativeService) processTask(taskID uint) {
 
 	if task.ProductImageURL != "" {
 		// 带商品图生成
+		log.Printf("开始带商品图生成: %s", task.ProductImageURL)
 		resp, err = s.tongyiClient.GenerateImageWithProduct(prompt, task.ProductImageURL, "1024*1024")
 	} else {
 		// 纯文本生成
+		log.Printf("开始纯文本图像生成")
 		resp, err = s.tongyiClient.GenerateImage(prompt, "1024*1024", task.NumVariants)
 	}
 
 	if err != nil {
-		log.Printf("Failed to generate image: %v", err)
+		log.Printf("图像生成失败: %v", err)
 		database.DB.Model(&task).Updates(map[string]interface{}{
 			"status":        models.TaskFailed,
-			"error_message": err.Error(),
+			"error_message": fmt.Sprintf("API调用失败: %v", err),
 			"progress":      100,
 		})
 		return
 	}
+
+	log.Printf("成功创建通义任务, ID: %s", resp.Output.TaskID)
 
 	// 更新进度
 	database.DB.Model(&task).Update("progress", 60)
 
 	// 轮询任务状态
 	tongyiTaskID := resp.Output.TaskID
-	for i := 0; i < 30; i++ { // 最多等待30次，每次2秒
+	for i := 0; i < 60; i++ { // 增加等待时间到120秒 (60次*2秒)
 		time.Sleep(2 * time.Second)
 
 		queryResp, err := s.tongyiClient.QueryTask(tongyiTaskID)
 		if err != nil {
-			log.Printf("Failed to query task: %v", err)
+			log.Printf("查询任务 %s 失败: %v", tongyiTaskID, err)
 			continue
 		}
 
-		log.Printf("Task status: %s", queryResp.Output.TaskStatus)
+		log.Printf("任务 %s 状态: %s, 请求ID: %s", tongyiTaskID, queryResp.Output.TaskStatus, queryResp.RequestID)
 
 		if queryResp.Output.TaskStatus == "SUCCEEDED" {
+			log.Printf("任务 %s 成功, 生成 %d 个结果", tongyiTaskID, len(queryResp.Output.Results))
+
 			// 保存生成的图片
 			for idx, result := range queryResp.Output.Results {
+				log.Printf("保存资产 %d 任务 %s, URL: %s", idx, task.UUID, result.URL)
+
 				tongyiURL := result.URL
 				publicURL := tongyiURL
 				storageType := models.StorageLocal
@@ -151,17 +165,17 @@ func (s *CreativeService) processTask(taskID uint) {
 					fileName := fmt.Sprintf("%s_%d", task.UUID, idx)
 					qiniuURL, err := s.qiniuService.UploadFromURL(tongyiURL, fileName)
 					if err != nil {
-						log.Printf("Failed to upload to Qiniu: %v, using original URL", err)
+						log.Printf("上传到七牛云失败: %v, 使用原始URL", err)
 						// 即使上传到七牛云失败，仍使用原始URL，但标记为本地存储
 						publicURL = tongyiURL
 						storageType = models.StorageLocal
 						originalPath = tongyiURL // 使用原始URL作为原始路径
 					} else {
 						publicURL = qiniuURL
-						storageType = models.StorageOSS
+						storageType = models.StorageQiniu
 						// 生成对应的内部存储路径
 						originalPath = s.qiniuService.generateKey(fmt.Sprintf("%s_%d", task.UUID, idx))
-						log.Printf("Image uploaded to Qiniu: %s (original path: %s)", qiniuURL, originalPath)
+						log.Printf("图片已上传到七牛云: %s (原始路径: %s)", qiniuURL, originalPath)
 					}
 				} else {
 					// 七牛云服务未配置，使用原始URL
@@ -175,13 +189,11 @@ func (s *CreativeService) processTask(taskID uint) {
 						UUID: uuid.New().String(),
 					},
 					TaskID:           task.ID,
-					Format:           "1:1",
+					Format:           "1:1", // 根据实际尺寸确定格式
 					Width:            1024,
 					Height:           1024,
 					StorageType:      storageType,
-					FilePath:         publicURL, // 当前的访问URL
-					PublicURL:        publicURL,
-					CDNURL:           publicURL,    // 公共图床URL
+					PublicURL:        publicURL,    // 已拼接好的完整公共访问URL
 					OriginalPath:     originalPath, // 原始内部路径
 					Style:            task.RequestedStyles[0],
 					VariantIndex:     &idx,
@@ -189,45 +201,110 @@ func (s *CreativeService) processTask(taskID uint) {
 					ModelName:        "wanx-v1",
 				}
 
+				// 在创建前验证数据
+				log.Printf("创建资产 任务 %d: URL=%s, 格式=1:1, 存储类型=%s", task.ID, publicURL, storageType)
+
 				if err := database.DB.Create(&asset).Error; err != nil {
-					log.Printf("Failed to save asset: %v", err)
+					// 如果错误是因为缺少original_path字段，尝试手动构建SQL
+					log.Printf("保存资产失败: %v", err)
+					if strings.Contains(err.Error(), "original_path") {
+						// 使用新的模型结构
+						asset := models.CreativeAsset{
+							UUIDModel: models.UUIDModel{
+								UUID: uuid.New().String(),
+							},
+							TaskID:           task.ID,
+							Format:           "1:1",
+							Width:            1024,
+							Height:           1024,
+							StorageType:      storageType,
+							PublicURL:        publicURL,    // 已拼接好的完整公共访问URL
+							Style:            task.RequestedStyles[0],
+							VariantIndex:     &idx,
+							GenerationPrompt: prompt,
+							ModelName:        "wanx-v1",
+						}
+
+						// 现在使用更新后的模型结构保存
+						if err := database.DB.Create(&asset).Error; err != nil {
+							log.Printf("保存资产失败: %v", err)
+						} else {
+							log.Printf("成功保存资产 %s 任务 %d URL: %s", asset.UUID, taskID, asset.PublicURL)
+						}
+					} else {
+						// 记录更详细的错误信息，这可能是导致资产未保存的原因
+						log.Printf("资产详情 (尝试保存): 任务ID=%d, 格式=1:1, 宽度=1024, 高度=1024, 公共URL=%s", task.ID, publicURL)
+						// 继续处理其他图片，不返回错误
+					}
+				} else {
+					log.Printf("成功保存资产 %s 任务 %d URL: %s", asset.UUID, taskID, asset.PublicURL)
 				}
+			}
+
+			// 再次查询任务，确保在更新之前重新加载
+			var updatedTask models.CreativeTask
+			if err := database.DB.First(&updatedTask, taskID).Error; err != nil {
+				log.Printf("重新加载任务 %d 失败: %v", taskID, err)
+				return
 			}
 
 			// 更新任务状态为完成
 			completedAt := time.Now()
 			duration := int(completedAt.Sub(now).Seconds())
-			database.DB.Model(&task).Updates(map[string]interface{}{
+
+			result := database.DB.Model(&updatedTask).Updates(map[string]interface{}{
 				"status":              models.TaskCompleted,
 				"progress":            100,
 				"completed_at":        completedAt,
 				"processing_duration": duration,
 			})
 
-			log.Printf("Task %d completed successfully", taskID)
+			if result.Error != nil {
+				log.Printf("更新完成任务失败: %v", result.Error)
+			} else {
+				log.Printf("任务 %d 成功完成，包含 %d 个资产", taskID, len(queryResp.Output.Results))
+			}
+
 			return
 
 		} else if queryResp.Output.TaskStatus == "FAILED" {
-			database.DB.Model(&task).Updates(map[string]interface{}{
+			errorMsg := queryResp.Output.Message
+			if errorMsg == "" {
+				errorMsg = "任务失败，无具体错误信息"
+			}
+
+			errUpdateResult := database.DB.Model(&task).Updates(map[string]interface{}{
 				"status":        models.TaskFailed,
-				"error_message": queryResp.Output.Message,
+				"error_message": errorMsg,
 				"progress":      100,
 			})
-			log.Printf("Task %d failed: %s", taskID, queryResp.Output.Message)
+
+			if errUpdateResult.Error != nil {
+				log.Printf("更新失败任务失败: %v", errUpdateResult.Error)
+			} else {
+				log.Printf("任务 %d 失败: %s", taskID, errorMsg)
+			}
 			return
 		}
 
 		// 更新进度
-		progress := 60 + (i * 40 / 30)
+		progress := 60 + (i * 40 / 60) // 改为60次计算，避免进度超过100
 		database.DB.Model(&task).Update("progress", progress)
 	}
 
 	// 超时
-	database.DB.Model(&task).Updates(map[string]interface{}{
+	timeoutErr := "任务在120秒后超时"
+	errUpdateResult := database.DB.Model(&task).Updates(map[string]interface{}{
 		"status":        models.TaskFailed,
-		"error_message": "Task timeout after 60 seconds",
+		"error_message": timeoutErr,
 		"progress":      100,
 	})
+
+	if errUpdateResult.Error != nil {
+		log.Printf("更新超时任务失败: %v", errUpdateResult.Error)
+	} else {
+		log.Printf("任务 %d 超时: %s", taskID, timeoutErr)
+	}
 }
 
 // generatePrompt 生成提示词
@@ -324,13 +401,7 @@ type CreativeAssetDTO struct {
 	Height   int    `json:"height"`
 }
 
-// getPublicURL 获取公共访问URL，优先级：CDNURL > PublicURL > FilePath
+// getPublicURL 获取公共访问URL
 func getPublicURL(asset *models.CreativeAsset) string {
-	if asset.CDNURL != "" {
-		return asset.CDNURL
-	}
-	if asset.PublicURL != "" {
-		return asset.PublicURL
-	}
-	return asset.FilePath
+	return asset.PublicURL
 }

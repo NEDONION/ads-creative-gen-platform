@@ -1,12 +1,11 @@
 package handlers
 
 import (
-	"math"
-	"n
-	"net/http"
-	"math"
-
+	"ads-creative-gen-platform/internal/models"
 	"ads-creative-gen-platform/internal/services"
+	"math"
+	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -79,22 +78,25 @@ func (h *CreativeHandler) GetTask(c *gin.Context) {
 		data.Error = task.ErrorMessage
 	}
 
-	// 如果有生成的创意
-	if len(task.Assets) > 0 {
-		creatives := make([]CreativeData, 0, len(task.Assets))
-		for _, asset := range task.Assets {
-			creatives = append(creatives, CreativeData{
-				ID:       asset.UUID,
-				Format:   asset.Format,
-				ImageURL: asset.PublicURL,
-				Width:    asset.Width,
-				Height:   asset.Height,
-			})
-		}
-		data.Creatives = creatives
+	// 总是包含资产信息（即使为空）
+	creatives := make([]CreativeData, 0, len(task.Assets))
+	for _, asset := range task.Assets {
+		creatives = append(creatives, CreativeData{
+			ID:       asset.UUID,
+			Format:   asset.Format,
+			ImageURL: getPublicURL(&asset), // 使用统一的方法获取公共URL
+			Width:    asset.Width,
+			Height:   asset.Height,
+		})
 	}
+	data.Creatives = creatives
 
 	c.JSON(http.StatusOK, SuccessResponse(data))
+}
+
+// getPublicURL 获取公共访问URL
+func getPublicURL(asset *models.CreativeAsset) string {
+	return asset.PublicURL
 }
 
 // ListAllAssets 获取所有创意素材
@@ -132,11 +134,11 @@ func (h *CreativeHandler) ListAllAssets(c *gin.Context) {
 	}
 
 	// 构建响应数据
+	responseData := map[string]interface{}{
 		"assets":      assets,
 		"total":       total,
 		"page":        pageNum,
 		"page_size":   pageSizeNum,
-		"page_size": pageSizeNum,
 		"total_pages": int(math.Ceil(float64(total) / float64(pageSizeNum))),
 	}
 

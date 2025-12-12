@@ -90,6 +90,7 @@ const (
 	StorageOSS   StorageType = "oss"
 	StorageS3    StorageType = "s3"
 	StorageMinio StorageType = "minio"
+	StorageQiniu StorageType = "qiniu"
 )
 
 // JSONMap 用于存储 JSON 对象
@@ -129,9 +130,7 @@ type CreativeAsset struct {
 
 	// 存储信息
 	StorageType  StorageType `gorm:"type:varchar(20);default:'local'" json:"storage_type"`
-	FilePath     string      `gorm:"type:varchar(512);not null" json:"file_path"`      // 原始存储路径
-	PublicURL    string      `gorm:"type:varchar(1024)" json:"public_url,omitempty"`   // 公共访问URL
-	CDNURL       string      `gorm:"type:varchar(1024)" json:"cdn_url,omitempty"`      // CDN URL（公共图床URL）
+	PublicURL    string      `gorm:"type:varchar(1024);not null" json:"public_url"`    // 公共访问URL
 	OriginalPath string      `gorm:"type:varchar(512)" json:"original_path,omitempty"` // 原始内部路径
 
 	// 生成元数据

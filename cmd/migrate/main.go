@@ -34,7 +34,7 @@ func main() {
 		fmt.Println("═══════════════════════════════════════")
 		fmt.Println("  Database Migration")
 		fmt.Println("═══════════════════════════════════════")
-		database.AutoMigrate()
+		database.MigrateTables()
 		fmt.Println("\n✓ Migration completed successfully!")
 
 	case "seed":
@@ -58,12 +58,9 @@ func main() {
 			os.Exit(0)
 		}
 
-		// 执行重置
-		database.AutoMigrate()
+			// 执行重置
+		database.InitializeDatabase()
 		fmt.Println("✓ Database reset completed!")
-
-		// 重新初始化默认数据
-		database.SeedDefaultData()
 		fmt.Println("✓ Default data seeded!")
 
 	default:

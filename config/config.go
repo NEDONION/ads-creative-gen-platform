@@ -64,6 +64,7 @@ type Qiniu struct {
 	SecretKey string
 	Bucket    string
 	Domain    string
+	PublicCloudDomain string  // 新增：公共云访问域名
 	Region    string
 	BasePath  string
 }
@@ -160,12 +161,13 @@ func loadTongyiConfig() {
 // loadQiniuConfig 加载七牛云配置
 func loadQiniuConfig() {
 	QiniuConfig = &Qiniu{
-		AccessKey: getEnv("QINIU_ACCESS_KEY", ""),
-		SecretKey: getEnv("QINIU_SECRET_KEY", ""),
-		Bucket:    getEnv("QINIU_BUCKET", "ads-creative-gen-platform"),
-		Domain:    getEnv("QINIU_DOMAIN", ""),
-		Region:    getEnv("QINIU_REGION", "cn-south-1"),
-		BasePath:  getEnv("QINIU_BASE_PATH", "s3/"),
+		AccessKey:         getEnv("QINIU_ACCESS_KEY", ""),
+		SecretKey:         getEnv("QINIU_SECRET_KEY", ""),
+		Bucket:            getEnv("QINIU_BUCKET", "ads-creative-gen-platform"),
+		Domain:            getEnv("QINIU_DOMAIN", ""),
+		PublicCloudDomain: getEnv("QINIU_PUBLIC_CLOUD_DOMAIN", ""),  // 新增：公共云访问域名
+		Region:            getEnv("QINIU_REGION", "cn-south-1"),
+		BasePath:          getEnv("QINIU_BASE_PATH", "s3/"),
 	}
 
 	if QiniuConfig.AccessKey == "" || QiniuConfig.SecretKey == "" {
@@ -189,7 +191,7 @@ func loadQiniuConfig() {
 // GetDatabaseDSN 返回数据库 DSN 连接字符串
 func GetDatabaseDSN() string {
 	if DatabaseConfig.Db == "postgres" {
-		return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable search_path=public",
 			DatabaseConfig.DbHost,
 			DatabaseConfig.DbPort,
 			DatabaseConfig.DbUser,

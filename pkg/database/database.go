@@ -16,14 +16,21 @@ var DB *gorm.DB
 
 // InitDatabase 初始化数据库连接
 func InitDatabase() {
+	log.Println("正在初始化数据库连接...")
+
 	dsn := config.GetDatabaseDSN()
+	log.Printf("数据库DSN: %s", dsn) // 添加DSN日志
+
 	dbType := config.DatabaseConfig.Db
+	log.Printf("数据库类型: %s", dbType) // 添加数据库类型日志
 
 	var dialector gorm.Dialector
 	if dbType == "postgres" {
 		dialector = postgres.Open(dsn)
+		log.Println("使用PostgreSQL驱动")
 	} else {
 		dialector = mysql.Open(dsn)
+		log.Println("使用MySQL驱动")
 	}
 
 	var err error
@@ -36,11 +43,18 @@ func InitDatabase() {
 
 	if err != nil {
 		log.Fatalf("✗ Failed to connect to database: %v", err)
+		return
+	}
+
+	if DB == nil {
+		log.Fatalf("✗ GORM Open 返回了 nil DB")
+		return
 	}
 
 	sqlDB, err := DB.DB()
 	if err != nil {
 		log.Fatalf("✗ Failed to get database instance: %v", err)
+		return
 	}
 
 	// 设置连接池
@@ -51,39 +65,66 @@ func InitDatabase() {
 	log.Printf("✓ Database connected successfully (Type: %s)", dbType)
 }
 
-// InitMySQL 初始化数据库连接（为了向后兼容）
-func InitMySQL() {
-	InitDatabase()
-}
+// MigrateTables 自动迁移数据库表
+func MigrateTables() {
+	if DB == nil {
+		log.Fatal("✗ Database not initialized, DB is nil")
+		return
+	}
 
-// AutoMigrate 自动迁移数据库表
-func AutoMigrate() {
-	log.Println("Starting database migration...")
+	log.Println("开始数据库迁移...")
 
-	err := DB.AutoMigrate(
-		// 用户相关
+	// 分步迁移，先迁移基础表，再迁移关联表
+	tables := []interface{}{
+		// 基础表
 		&models.User{},
+		&models.Tag{},
 		&models.Project{},
-		&models.ProjectMember{},
 
-		// 创意相关
+		// 创意相关表
 		&models.CreativeTask{},
 		&models.CreativeAsset{},
 		&models.CreativeScore{},
 
-		// 标签
-		&models.Tag{},
-	)
-
-	if err != nil {
-		log.Fatalf("✗ Database migration failed: %v", err)
+		// 关系表
+		&models.ProjectMember{},
 	}
 
-	log.Println("✓ Database migration completed")
+	for _, table := range tables {
+		if err := DB.AutoMigrate(table); err != nil {
+			log.Printf("✗ 迁移 %T 表失败: %v", table, err)
+			// 不直接退出，继续尝试迁移其他表
+		} else {
+			log.Printf("✓ %T 表迁移完成", table)
+		}
+	}
+
+	log.Println("✓ 数据库迁移完成")
+}
+
+// InitializeDatabase 初始化数据库：迁移表结构并添加默认数据
+func InitializeDatabase() {
+	log.Println("开始初始化数据库...")
+
+	// 首先初始化数据库连接
+	InitDatabase()
+
+	// 迁移表结构
+	MigrateTables()
+
+	// 添加默认数据
+	SeedDefaultData()
+
+	log.Println("✓ 数据库初始化完成")
 }
 
 // SeedDefaultData 初始化默认数据
 func SeedDefaultData() {
+	if DB == nil {
+		log.Fatal("✗ Database not initialized, DB is nil")
+		return
+	}
+
 	log.Println("Seeding default data...")
 
 	// 检查是否已有数据

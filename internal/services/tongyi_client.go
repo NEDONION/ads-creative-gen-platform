@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -64,8 +65,11 @@ type ImageGenResponse struct {
 
 // GenerateImage 生成图片
 func (c *TongyiClient) GenerateImage(prompt string, size string, n int) (*ImageGenResponse, error) {
+	log.Printf("[通义客户端] 开始生成图片, 提示词: %s, 尺寸: %s, 数量: %d", prompt, size, n)
+
 	if size == "" {
 		size = "1024*1024" // 使用API支持的标准尺寸
+		log.Printf("[通义客户端] 尺寸为空，使用默认尺寸: %s", size)
 	}
 	// 确保使用API支持的尺寸之一
 	supportedSizes := []string{"1024*1024", "720*1280", "1280*720", "768*1152"}
@@ -78,11 +82,13 @@ func (c *TongyiClient) GenerateImage(prompt string, size string, n int) (*ImageG
 	}
 
 	if !isSupported {
+		log.Printf("[通义客户端] 尺寸 %s 不被支持，回退到默认尺寸: 1024*1024", size)
 		size = "1024*1024" // 如果不支持，回退到默认尺寸
 	}
 
 	if n <= 0 {
 		n = 1
+		log.Printf("[通义客户端] 数量为0或负数，设置为默认值: 1")
 	}
 
 	req := ImageGenRequest{
@@ -96,13 +102,25 @@ func (c *TongyiClient) GenerateImage(prompt string, size string, n int) (*ImageG
 		},
 	}
 
-	return c.callAPI(req)
+	log.Printf("[通义客户端] 发送请求到API，模型: %s, 尺寸: %s, 数量: %d", req.Model, req.Parameters.Size, req.Parameters.N)
+
+	response, err := c.callAPI(req)
+	if err != nil {
+		log.Printf("[通义客户端] API调用失败: %v", err)
+		return nil, err
+	}
+
+	log.Printf("[通义客户端] API调用成功，任务ID: %s, 状态: %s", response.Output.TaskID, response.Output.TaskStatus)
+	return response, nil
 }
 
 // GenerateImageWithProduct 带商品图生成
 func (c *TongyiClient) GenerateImageWithProduct(prompt string, productImageURL string, size string) (*ImageGenResponse, error) {
+	log.Printf("[通义客户端] 开始带商品图生成, 提示词: %s, 商品图URL: %s, 尺寸: %s", prompt, productImageURL, size)
+
 	if size == "" {
 		size = "1024*1024" // 使用API支持的标准尺寸
+		log.Printf("[通义客户端] 尺寸为空，使用默认尺寸: %s", size)
 	}
 	// 确保使用API支持的尺寸之一
 	supportedSizes := []string{"1024*1024", "720*1280", "1280*720", "768*1152"}
@@ -115,6 +133,7 @@ func (c *TongyiClient) GenerateImageWithProduct(prompt string, productImageURL s
 	}
 
 	if !isSupported {
+		log.Printf("[通义客户端] 尺寸 %s 不被支持，回退到默认尺寸: 1024*1024", size)
 		size = "1024*1024" // 如果不支持，回退到默认尺寸
 	}
 
@@ -131,7 +150,16 @@ func (c *TongyiClient) GenerateImageWithProduct(prompt string, productImageURL s
 		},
 	}
 
-	return c.callAPI(req)
+	log.Printf("[通义客户端] 发送带商品图请求到API，模型: %s, 尺寸: %s, 商品图: %s", req.Model, req.Parameters.Size, req.Parameters.RefImg)
+
+	response, err := c.callAPI(req)
+	if err != nil {
+		log.Printf("[通义客户端] 带商品图API调用失败: %v", err)
+		return nil, err
+	}
+
+	log.Printf("[通义客户端] 带商品图API调用成功，任务ID: %s, 状态: %s", response.Output.TaskID, response.Output.TaskStatus)
+	return response, nil
 }
 
 // callAPI 调用通义 API

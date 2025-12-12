@@ -14,7 +14,7 @@ type Project struct {
 	Name        string        `gorm:"type:varchar(128);not null" json:"name"`
 	Description string        `gorm:"type:text" json:"description,omitempty"`
 	OwnerID     uint          `gorm:"not null;index" json:"owner_id"`
-	Status      ProjectStatus `gorm:"type:enum('active','archived');default:'active';index" json:"status"`
+	Status      ProjectStatus `gorm:"type:varchar(20);default:'active';index" json:"status"`
 	Settings    JSONMap       `gorm:"type:json" json:"settings,omitempty"`
 
 	// 关联
@@ -42,7 +42,7 @@ type ProjectMember struct {
 	BaseModel
 	ProjectID uint              `gorm:"not null;index:idx_project_user" json:"project_id"`
 	UserID    uint              `gorm:"not null;index:idx_project_user" json:"user_id"`
-	Role      ProjectMemberRole `gorm:"type:enum('owner','admin','member','viewer');default:'member'" json:"role"`
+	Role      ProjectMemberRole `gorm:"type:varchar(20);default:'member'" json:"role"`
 
 	// 关联
 	Project *Project `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
