@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: ads_creative_mysql
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ads_creative_platform
+      MYSQL_USER: creative_user
+      MYSQL_PASSWORD: creative_pass
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docs/database-schema.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    networks:
+      - creative_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (Phase 4 会用到)
+  redis:
+    image: redis:7-alpine
+    container_name: ads_creative_redis
+    restart: always
+    ports:
+      - "6380:6379"  # 改为6380避免冲突
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - creative_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # RabbitMQ (已经在配置文件中配置了)
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: ads_creative_rabbitmq
+    restart: always
+    ports:
+      - "5673:5672"   # AMQP 端口（改为5673避免冲突）
+      - "15673:15672" # 管理界面（改为15673避免冲突）
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - creative_network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # MinIO (对象存储, Phase 2 会用到)
+  minio:
+    image: minio/minio:latest
+    container_name: ads_creative_minio
+    restart: always
+    ports:
+      - "9000:9000"   # API 端口
+      - "9001:9001"   # 控制台端口
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - creative_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  minio_data:
+    driver: local
+
+networks:
+  creative_network:
+    driver: bridge

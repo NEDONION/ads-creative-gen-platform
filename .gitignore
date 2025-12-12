@@ -1,0 +1,46 @@
+# 环境变量文件（包含敏感信息）
+.env
+
+# 二进制文件
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# 测试覆盖率
+*.out
+coverage.txt
+*.test
+
+# Go workspace file
+go.work
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.log
+
+# 素材文件
+uploads/
+assets/generated/
+*.png
+*.jpg
+*.jpeg
+*.gif
+!docs/**/*.png
+!docs/**/*.jpg
