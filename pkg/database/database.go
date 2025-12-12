@@ -74,7 +74,7 @@ func MigrateTables() {
 
 	log.Println("开始数据库迁移...")
 
-	// 分步迁移，先迁移基础表，再迁移关联表
+	// 先迁移基础表，再迁移关联表
 	tables := []interface{}{
 		// 基础表
 		&models.User{},
@@ -83,7 +83,7 @@ func MigrateTables() {
 
 		// 创意相关表
 		&models.CreativeTask{},
-		&models.CreativeAsset{},
+		&models.CreativeAsset{},  // 这个表包含我们修改的字段
 		&models.CreativeScore{},
 
 		// 关系表

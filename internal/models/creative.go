@@ -129,7 +129,7 @@ type CreativeAsset struct {
 	FileSize *int   `json:"file_size,omitempty"`
 
 	// 存储信息
-	StorageType  StorageType `gorm:"type:varchar(20);default:'local'" json:"storage_type"`
+	StorageType  StorageType `gorm:"type:varchar(20);default:'local';not null" json:"storage_type"`
 	PublicURL    string      `gorm:"type:varchar(1024);not null" json:"public_url"`    // 公共访问URL
 	OriginalPath string      `gorm:"type:varchar(512)" json:"original_path,omitempty"` // 原始内部路径
 
