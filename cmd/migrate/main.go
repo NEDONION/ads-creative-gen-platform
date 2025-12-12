@@ -25,7 +25,7 @@ func main() {
 	config.LoadConfig()
 
 	// 初始化数据库连接
-	database.InitMySQL()
+	database.InitDatabase()
 	defer database.CloseDB()
 
 	// 执行操作

@@ -7,18 +7,27 @@ import (
 	"time"
 
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
 
-// InitMySQL 初始化 MySQL 连接
-func InitMySQL() {
-	dsn := config.GetMySQLDSN()
+// InitDatabase 初始化数据库连接
+func InitDatabase() {
+	dsn := config.GetDatabaseDSN()
+	dbType := config.DatabaseConfig.Db
+
+	var dialector gorm.Dialector
+	if dbType == "postgres" {
+		dialector = postgres.Open(dsn)
+	} else {
+		dialector = mysql.Open(dsn)
+	}
 
 	var err error
-	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+	DB, err = gorm.Open(dialector, &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 		NowFunc: func() time.Time {
 			return time.Now().Local()
@@ -26,7 +35,7 @@ func InitMySQL() {
 	})
 
 	if err != nil {
-		log.Fatalf("✗ Failed to connect to MySQL: %v", err)
+		log.Fatalf("✗ Failed to connect to database: %v", err)
 	}
 
 	sqlDB, err := DB.DB()
@@ -39,7 +48,12 @@ func InitMySQL() {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	log.Println("✓ MySQL connected successfully")
+	log.Printf("✓ Database connected successfully (Type: %s)", dbType)
+}
+
+// InitMySQL 初始化数据库连接（为了向后兼容）
+func InitMySQL() {
+	InitDatabase()
 }
 
 // AutoMigrate 自动迁移数据库表
@@ -124,7 +138,7 @@ func CloseDB() {
 		sqlDB, err := DB.DB()
 		if err == nil {
 			sqlDB.Close()
-			log.Println("✓ MySQL connection closed")
+			log.Println("✓ Database connection closed")
 		}
 	}
 }

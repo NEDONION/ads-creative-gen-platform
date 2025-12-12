@@ -30,8 +30,8 @@ type User struct {
 	PasswordHash string     `gorm:"type:varchar(255);not null" json:"-"`
 	Phone        string     `gorm:"type:varchar(20)" json:"phone,omitempty"`
 	AvatarURL    string     `gorm:"type:varchar(512)" json:"avatar_url,omitempty"`
-	Role         UserRole   `gorm:"type:enum('admin','user','viewer');default:'user'" json:"role"`
-	Status       UserStatus `gorm:"type:enum('active','inactive','banned');default:'active'" json:"status"`
+	Role         UserRole   `gorm:"type:varchar(20);default:'user'" json:"role"`
+	Status       UserStatus `gorm:"type:varchar(20);default:'active'" json:"status"`
 	LastLoginAt  *time.Time `json:"last_login_at,omitempty"`
 }
 

@@ -3,17 +3,20 @@ package config
 import (
 	"fmt"
 	"log"
+	"os"
 
+	"github.com/joho/godotenv"
 	"gopkg.in/ini.v1"
 )
 
 // 全局配置对象
 var (
 	AppConfig      *App
-	MySQLConfig    *MySQL
+	DatabaseConfig *Database
 	RabbitMQConfig *RabbitMQ
 	EtcdConfig     *Etcd
 	TongyiConfig   *Tongyi
+	QiniuConfig    *Qiniu
 )
 
 // App 服务配置
@@ -22,8 +25,8 @@ type App struct {
 	HttpPort string
 }
 
-// MySQL 数据库配置
-type MySQL struct {
+// Database 数据库配置
+type Database struct {
 	Db         string
 	DbHost     string
 	DbPort     string
@@ -55,8 +58,23 @@ type Tongyi struct {
 	LLMModel   string
 }
 
+// Qiniu 七牛云配置
+type Qiniu struct {
+	AccessKey string
+	SecretKey string
+	Bucket    string
+	Domain    string
+	Region    string
+	BasePath  string
+}
+
 // LoadConfig 加载所有配置
 func LoadConfig() {
+	// 加载 .env 文件
+	if err := godotenv.Load(); err != nil {
+		log.Println("Warning: .env file not found")
+	}
+
 	// 读取 ini 配置文件
 	cfg, err := ini.Load("./config/config.ini")
 	if err != nil {
@@ -65,10 +83,11 @@ func LoadConfig() {
 
 	// 加载各模块配置
 	loadAppConfig(cfg)
-	loadMySQLConfig(cfg)
+	loadDatabaseConfig(cfg)
 	loadRabbitMQConfig(cfg)
 	loadEtcdConfig(cfg)
 	loadTongyiConfig()
+	loadQiniuConfig()
 
 	log.Println("✓ All configurations loaded successfully")
 }
@@ -82,23 +101,23 @@ func loadAppConfig(cfg *ini.File) {
 	log.Printf("✓ App config loaded (Mode: %s, Port: %s)", AppConfig.AppMode, AppConfig.HttpPort)
 }
 
-// loadMySQLConfig 加载MySQL配置
-func loadMySQLConfig(cfg *ini.File) {
-	MySQLConfig = &MySQL{
-		Db:         cfg.Section("mysql").Key("Db").String(),
-		DbHost:     cfg.Section("mysql").Key("DbHost").String(),
-		DbPort:     cfg.Section("mysql").Key("DbPort").String(),
-		DbUser:     cfg.Section("mysql").Key("DbUser").String(),
-		DbPassWord: cfg.Section("mysql").Key("DbPassWord").String(),
-		DbName:     cfg.Section("mysql").Key("DbName").String(),
-		Charset:    cfg.Section("mysql").Key("Charset").String(),
+// loadDatabaseConfig 加载数据库配置
+func loadDatabaseConfig(cfg *ini.File) {
+	DatabaseConfig = &Database{
+		Db:         cfg.Section("database").Key("Db").String(),
+		DbHost:     cfg.Section("database").Key("DbHost").String(),
+		DbPort:     cfg.Section("database").Key("DbPort").String(),
+		DbUser:     cfg.Section("database").Key("DbUser").String(),
+		DbPassWord: cfg.Section("database").Key("DbPassWord").String(),
+		DbName:     cfg.Section("database").Key("DbName").String(),
+		Charset:    cfg.Section("database").Key("Charset").String(),
 	}
 
-	if MySQLConfig.DbName == "" {
-		log.Fatal("✗ MySQL DbName is required in config.ini")
+	if DatabaseConfig.DbName == "" {
+		log.Fatal("✗ Database DbName is required in config.ini")
 	}
 
-	log.Printf("✓ MySQL config loaded (Database: %s)", MySQLConfig.DbName)
+	log.Printf("✓ Database config loaded (Type: %s, Database: %s)", DatabaseConfig.Db, DatabaseConfig.DbName)
 }
 
 // loadRabbitMQConfig 加载RabbitMQ配置
@@ -138,15 +157,54 @@ func loadTongyiConfig() {
 	log.Printf("✓ Tongyi config loaded (Model: %s)", TongyiConfig.ImageModel)
 }
 
-// GetMySQLDSN 返回 MySQL DSN 连接字符串
-func GetMySQLDSN() string {
+// loadQiniuConfig 加载七牛云配置
+func loadQiniuConfig() {
+	QiniuConfig = &Qiniu{
+		AccessKey: getEnv("QINIU_ACCESS_KEY", ""),
+		SecretKey: getEnv("QINIU_SECRET_KEY", ""),
+		Bucket:    getEnv("QINIU_BUCKET", "ads-creative-gen-platform"),
+		Domain:    getEnv("QINIU_DOMAIN", ""),
+		Region:    getEnv("QINIU_REGION", "cn-south-1"),
+		BasePath:  getEnv("QINIU_BASE_PATH", "s3/"),
+	}
+
+	if QiniuConfig.AccessKey == "" || QiniuConfig.SecretKey == "" {
+		log.Println("⚠ Qiniu credentials not configured, image upload will be disabled")
+		log.Println("💡 To enable Qiniu storage, set QINIU_ACCESS_KEY and QINIU_SECRET_KEY in your .env file")
+		log.Println("💡 Also recommend setting QINIU_DOMAIN for custom domain access")
+		return
+	}
+
+	log.Printf("✓ Qiniu config loaded (Bucket: %s, Region: %s)", QiniuConfig.Bucket, QiniuConfig.Region)
+
+	if QiniuConfig.Domain == "" {
+		log.Println("💡 QINIU_DOMAIN is not set, using default S3 domain format")
+		log.Printf("💡 To set custom domain, configure CNAME for %s.s3.%s.qiniucs.com", QiniuConfig.Bucket, QiniuConfig.Region)
+	}
+
+	log.Println("💡 IMPORTANT: For public access, ensure your Qiniu bucket is set to 'Public Read' in Qiniu Console")
+	log.Println("💡 If using 'Private' bucket, images will require authentication and may not be accessible")
+}
+
+// GetDatabaseDSN 返回数据库 DSN 连接字符串
+func GetDatabaseDSN() string {
+	if DatabaseConfig.Db == "postgres" {
+		return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+			DatabaseConfig.DbHost,
+			DatabaseConfig.DbPort,
+			DatabaseConfig.DbUser,
+			DatabaseConfig.DbPassWord,
+			DatabaseConfig.DbName,
+		)
+	}
+	// MySQL fallback
 	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=True&loc=Local",
-		MySQLConfig.DbUser,
-		MySQLConfig.DbPassWord,
-		MySQLConfig.DbHost,
-		MySQLConfig.DbPort,
-		MySQLConfig.DbName,
-		MySQLConfig.Charset,
+		DatabaseConfig.DbUser,
+		DatabaseConfig.DbPassWord,
+		DatabaseConfig.DbHost,
+		DatabaseConfig.DbPort,
+		DatabaseConfig.DbName,
+		DatabaseConfig.Charset,
 	)
 }
 
@@ -163,7 +221,9 @@ func GetRabbitMQURL() string {
 
 // getEnv 从环境变量读取，如果不存在则返回默认值
 func getEnv(key, defaultValue string) string {
-	// 这里需要先加载 .env 文件
-	// 可以使用 godotenv 包
-	return defaultValue
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
 }

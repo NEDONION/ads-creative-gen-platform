@@ -1,33 +1,26 @@
 version: '3.8'
 
 services:
-  # MySQL 数据库
-  mysql:
-    image: mysql:8.0
-    container_name: ads_creative_mysql
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ads_creative_postgres
     restart: always
     ports:
-      - "3306:3306"
+      - "5432:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: ads_creative_platform
-      MYSQL_USER: creative_user
-      MYSQL_PASSWORD: creative_pass
-      TZ: Asia/Shanghai
+      POSTGRES_DB: ads_creative_gen_platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docs/database-schema.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --default-authentication-plugin=mysql_native_password
-    networks:
-      - creative_network
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - creative_network
 
   # Redis (Phase 4 会用到)
   redis:
@@ -68,36 +61,13 @@ services:
       timeout: 10s
       retries: 5
 
-  # MinIO (对象存储, Phase 2 会用到)
-  minio:
-    image: minio/minio:latest
-    container_name: ads_creative_minio
-    restart: always
-    ports:
-      - "9000:9000"   # API 端口
-      - "9001:9001"   # 控制台端口
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-    networks:
-      - creative_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 volumes:
-  mysql_data:
+  postgres_data:
     driver: local
   redis_data:
     driver: local
   rabbitmq_data:
-    driver: local
-  minio_data:
     driver: local
 
 networks:

@@ -1,29 +1,71 @@
 package main
 
 import (
-	"fmt"
-	"log"
-
 	"ads-creative-gen-platform/config"
+	"ads-creative-gen-platform/internal/handlers"
+	"ads-creative-gen-platform/internal/middleware"
+	"ads-creative-gen-platform/pkg/database"
+	"fmt"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	// 加载配置
 	config.LoadConfig()
 
-	fmt.Println("=== AI 多尺寸广告创意生成平台 ===")
-	fmt.Printf("Environment: %s\n", config.AppConfig.Environment)
-	fmt.Printf("Server will run on port: %s\n", config.AppConfig.ServerPort)
+	// 初始化数据库
+	database.InitDatabase()
+	defer database.CloseDB()
 
-	// 验证通义 API Key 已加载（只显示前后几位）
-	apiKey := config.AppConfig.TongyiAPIKey
-	if len(apiKey) > 10 {
-		maskedKey := apiKey[:3] + "..." + apiKey[len(apiKey)-4:]
-		fmt.Printf("Tongyi API Key loaded: %s\n", maskedKey)
-	} else {
-		log.Fatal("Invalid API Key format")
+	// 设置 Gin 模式
+	if config.AppConfig.AppMode == "release" {
+		gin.SetMode(gin.ReleaseMode)
 	}
 
-	fmt.Println("\n✓ 配置加载成功！")
-	fmt.Println("准备开始构建广告创意生成服务...")
+	// 创建路由
+	r := gin.Default()
+
+	// 添加CORS中间件
+	r.Use(middleware.CORSMiddleware())
+
+	// 创建处理器
+	creativeHandler := handlers.NewCreativeHandler()
+
+	// 健康检查
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":  "ok",
+			"service": "ads-creative-platform",
+		})
+	})
+
+	// API v1
+	v1 := r.Group("/api/v1")
+	{
+		v1.GET("/ping", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"message": "pong",
+			})
+		})
+
+		// 创意生成接口
+		v1.POST("/creative/generate", creativeHandler.Generate)
+
+		// 查询任务接口
+		v1.GET("/creative/task/:id", creativeHandler.GetTask)
+
+		// 获取所有创意素材接口
+		v1.GET("/creative/assets", creativeHandler.ListAllAssets)
+	}
+
+	// 启动服务
+	port := config.AppConfig.HttpPort
+	fmt.Printf("\n🚀 Server starting on %s\n", port)
+	fmt.Printf("📖 API Docs: http://localhost%s/api/v1/ping\n", port)
+	fmt.Printf("💚 Health Check: http://localhost%s/health\n\n", port)
+
+	if err := r.Run(port); err != nil {
+		panic(err)
+	}
 }

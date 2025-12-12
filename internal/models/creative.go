@@ -45,14 +45,14 @@ func (s StringArray) Value() (driver.Value, error) {
 // CreativeTask 创意生成任务
 type CreativeTask struct {
 	UUIDModel
-	UserID    uint   `gorm:"not null;index" json:"user_id"`
-	ProjectID *uint  `gorm:"index" json:"project_id,omitempty"`
+	UserID    uint  `gorm:"not null;index" json:"user_id"`
+	ProjectID *uint `gorm:"index" json:"project_id,omitempty"`
 
 	// 输入信息
-	Title             string      `gorm:"type:varchar(255);not null" json:"title"`
-	SellingPoints     StringArray `gorm:"type:json" json:"selling_points"`
-	ProductImageURL   string      `gorm:"type:varchar(512)" json:"product_image_url,omitempty"`
-	BrandLogoURL      string      `gorm:"type:varchar(512)" json:"brand_logo_url,omitempty"`
+	Title           string      `gorm:"type:varchar(255);not null" json:"title"`
+	SellingPoints   StringArray `gorm:"type:json" json:"selling_points"`
+	ProductImageURL string      `gorm:"type:varchar(512)" json:"product_image_url,omitempty"`
+	BrandLogoURL    string      `gorm:"type:varchar(512)" json:"brand_logo_url,omitempty"`
 
 	// 生成配置
 	RequestedFormats StringArray `gorm:"type:json" json:"requested_formats"`
@@ -61,9 +61,9 @@ type CreativeTask struct {
 	CTAText          string      `gorm:"type:varchar(64)" json:"cta_text,omitempty"`
 
 	// 任务状态
-	Status           TaskStatus `gorm:"type:enum('pending','queued','processing','completed','failed','cancelled');default:'pending';index" json:"status"`
-	Progress         int        `gorm:"default:0" json:"progress"` // 0-100
-	ErrorMessage     string     `gorm:"type:text" json:"error_message,omitempty"`
+	Status       TaskStatus `gorm:"type:varchar(20);default:'pending';index" json:"status"`
+	Progress     int        `gorm:"default:0" json:"progress"` // 0-100
+	ErrorMessage string     `gorm:"type:text" json:"error_message,omitempty"`
 
 	// 时间统计
 	QueuedAt           *time.Time `json:"queued_at,omitempty"`
@@ -72,9 +72,9 @@ type CreativeTask struct {
 	ProcessingDuration *int       `json:"processing_duration,omitempty"` // 秒
 
 	// 关联
-	User    *User            `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Project *Project         `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
-	Assets  []CreativeAsset  `gorm:"foreignKey:TaskID" json:"assets,omitempty"`
+	User    *User           `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Project *Project        `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
+	Assets  []CreativeAsset `gorm:"foreignKey:TaskID" json:"assets,omitempty"`
 }
 
 // TableName 指定表名
@@ -128,10 +128,11 @@ type CreativeAsset struct {
 	FileSize *int   `json:"file_size,omitempty"`
 
 	// 存储信息
-	StorageType StorageType `gorm:"type:enum('local','oss','s3','minio');default:'local'" json:"storage_type"`
-	FilePath    string      `gorm:"type:varchar(512);not null" json:"file_path"`
-	PublicURL   string      `gorm:"type:varchar(1024)" json:"public_url,omitempty"`
-	CDNURL      string      `gorm:"type:varchar(1024)" json:"cdn_url,omitempty"`
+	StorageType  StorageType `gorm:"type:varchar(20);default:'local'" json:"storage_type"`
+	FilePath     string      `gorm:"type:varchar(512);not null" json:"file_path"`      // 原始存储路径
+	PublicURL    string      `gorm:"type:varchar(1024)" json:"public_url,omitempty"`   // 公共访问URL
+	CDNURL       string      `gorm:"type:varchar(1024)" json:"cdn_url,omitempty"`      // CDN URL（公共图床URL）
+	OriginalPath string      `gorm:"type:varchar(512)" json:"original_path,omitempty"` // 原始内部路径
 
 	// 生成元数据
 	Style            string  `gorm:"type:varchar(64);index" json:"style,omitempty"`
@@ -162,16 +163,16 @@ func (CreativeAsset) TableName() string {
 
 // CreativeScore 创意评分
 type CreativeScore struct {
-	ID         uint    `gorm:"primarykey" json:"id"`
-	CreativeID uint    `gorm:"uniqueIndex;not null" json:"creative_id"`
+	ID         uint `gorm:"primarykey" json:"id"`
+	CreativeID uint `gorm:"uniqueIndex;not null" json:"creative_id"`
 
 	// 质量评分
-	QualityOverall     *float64 `gorm:"type:decimal(4,3)" json:"quality_overall,omitempty"`
-	BrightnessScore    *float64 `gorm:"type:decimal(4,3)" json:"brightness_score,omitempty"`
-	ContrastScore      *float64 `gorm:"type:decimal(4,3)" json:"contrast_score,omitempty"`
-	SharpnessScore     *float64 `gorm:"type:decimal(4,3)" json:"sharpness_score,omitempty"`
-	CompositionScore   *float64 `gorm:"type:decimal(4,3)" json:"composition_score,omitempty"`
-	ColorHarmonyScore  *float64 `gorm:"type:decimal(4,3)" json:"color_harmony_score,omitempty"`
+	QualityOverall    *float64 `gorm:"type:decimal(4,3)" json:"quality_overall,omitempty"`
+	BrightnessScore   *float64 `gorm:"type:decimal(4,3)" json:"brightness_score,omitempty"`
+	ContrastScore     *float64 `gorm:"type:decimal(4,3)" json:"contrast_score,omitempty"`
+	SharpnessScore    *float64 `gorm:"type:decimal(4,3)" json:"sharpness_score,omitempty"`
+	CompositionScore  *float64 `gorm:"type:decimal(4,3)" json:"composition_score,omitempty"`
+	ColorHarmonyScore *float64 `gorm:"type:decimal(4,3)" json:"color_harmony_score,omitempty"`
 
 	// CTR 预测
 	CTRPrediction *float64 `gorm:"type:decimal(5,4);index" json:"ctr_prediction,omitempty"`
