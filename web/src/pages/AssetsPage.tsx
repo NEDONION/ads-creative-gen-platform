@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Layout from '../components/Layout';
 import { creativeAPI } from '../services/api';
 import type { AssetData } from '../types';
 
@@ -10,7 +9,7 @@ const AssetsPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pageSize = 12;
+  const pageSize = 20;
 
   useEffect(() => {
     loadAssets();
@@ -41,94 +40,150 @@ const AssetsPage: React.FC = () => {
   };
 
   return (
-    <Layout title="素材管理">
-      <div className="card">
-        <div className="card-header">
-          <h3 className="card-title">素材管理</h3>
-          <div className="search-bar">
-            <button className="btn btn-primary" onClick={loadAssets} disabled={loading}>
-              <i className="fas fa-sync"></i> 刷新
-            </button>
+    <div className="app">
+      <div className="sidebar">
+        <div className="sidebar-header">
+          <h2>
+            <i className="fas fa-bullseye"></i> <span>创意平台</span>
+          </h2>
+        </div>
+        <nav className="nav-menu">
+          <a href="/" className="nav-item">
+            <i className="fas fa-home"></i>
+            <span>仪表盘</span>
+          </a>
+          <a href="/creative" className="nav-item">
+            <i className="fas fa-magic"></i>
+            <span>创意生成</span>
+          </a>
+          <a href="/assets" className="nav-item active">
+            <i className="fas fa-images"></i>
+            <span>素材管理</span>
+          </a>
+          <a href="/tasks" className="nav-item">
+            <i className="fas fa-tasks"></i>
+            <span>任务管理</span>
+          </a>
+        </nav>
+      </div>
+
+      <div className="main-content">
+        <div className="header">
+          <h1 className="page-title">素材管理</h1>
+          <div className="user-info">
+            <div className="avatar">A</div>
+            <span>管理员</span>
           </div>
         </div>
-        <div className="card-body">
-          {error && (
-            <div style={{ padding: '16px', background: '#fee2e2', color: '#ef4444', borderRadius: '8px', marginBottom: '16px' }}>
-              {error}
-            </div>
-          )}
 
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-              <div className="loading"></div>
-              <div style={{ marginTop: '12px' }}>加载中...</div>
+        <div className="content">
+          <div className="compact-layout">
+            <div className="compact-toolbar">
+              <div className="compact-toolbar-left">
+                <div className="compact-stats-text">
+                  共 <strong>{total}</strong> 个素材
+                </div>
+              </div>
+              <div className="compact-toolbar-right">
+                <button className="compact-btn compact-btn-outline compact-btn-sm" onClick={loadAssets} disabled={loading}>
+                  <i className="fas fa-sync"></i>
+                  <span>刷新</span>
+                </button>
+              </div>
             </div>
-          ) : assets.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>暂无素材</div>
-          ) : (
-            <>
-              <div className="assets-grid">
-                {assets.map((asset) => (
-                  <div key={asset.id} className="asset-card">
-                    <img
-                      src={asset.public_url || asset.image_url}
-                      alt={asset.id}
-                      className="asset-image"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="280" height="200" viewBox="0 0 280 200"><rect width="280" height="200" fill="%23f0f0f0"/><text x="140" y="100" font-family="Arial" font-size="12" text-anchor="middle" fill="%23999">素材图片</text></svg>';
-                      }}
-                    />
-                    <div className="asset-info">
-                      <div className="asset-title">{asset.id.substring(0, 12)}...</div>
-                      <div className="asset-meta">
-                        <span>{asset.format}</span>
-                        <span>{asset.width}×{asset.height}</span>
+
+            {error && (
+              <div className="compact-alert compact-alert-error">
+                <i className="fas fa-exclamation-circle"></i>
+                <span>{error}</span>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="compact-loading">
+                <div className="loading"></div>
+                <div className="compact-loading-text">加载中...</div>
+              </div>
+            ) : assets.length === 0 ? (
+              <div className="compact-empty">
+                <i className="fas fa-images"></i>
+                <div className="compact-empty-text">暂无素材</div>
+                <div className="compact-empty-hint">生成创意后素材将显示在这里</div>
+              </div>
+            ) : (
+              <>
+                <div className="compact-assets-grid">
+                  {assets.map((asset) => (
+                    <div key={asset.id} className="compact-asset-card">
+                      <div className="compact-asset-image-wrapper">
+                        <img
+                          src={asset.public_url || asset.image_url}
+                          alt={asset.id}
+                          className="compact-asset-image"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180" viewBox="0 0 240 180"><rect width="240" height="180" fill="%23f5f5f5"/><text x="120" y="90" font-family="Arial" font-size="11" text-anchor="middle" fill="%23999">素材图片</text></svg>';
+                          }}
+                        />
+                      </div>
+                      <div className="compact-asset-info">
+                        <div className="compact-asset-meta">
+                          <span className="compact-asset-format">{asset.format}</span>
+                          <span className="compact-asset-size">{asset.width}×{asset.height}</span>
+                        </div>
+                        <div className="compact-asset-id" title={asset.id}>
+                          {asset.id.substring(0, 8)}...
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              {totalPages > 1 && (
-                <div className="pagination">
-                  <button
-                    className="page-btn"
-                    disabled={currentPage <= 1}
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                  >
-                    上一页
-                  </button>
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const pageNum = i + Math.max(1, currentPage - 2);
-                    if (pageNum > totalPages) return null;
-                    return (
-                      <button
-                        key={pageNum}
-                        className={`page-btn ${currentPage === pageNum ? 'active' : ''}`}
-                        onClick={() => setCurrentPage(pageNum)}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                  <button
-                    className="page-btn"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                  >
-                    下一页
-                  </button>
-                  <div style={{ lineHeight: '32px', color: 'var(--gray)' }}>
-                    共 {total} 项，第 {currentPage} 页，共 {totalPages} 页
-                  </div>
+                  ))}
                 </div>
-              )}
-            </>
-          )}
+
+                {totalPages > 1 && (
+                  <div className="compact-pagination">
+                    <button
+                      className="compact-page-btn"
+                      disabled={currentPage <= 1}
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                    >
+                      <i className="fas fa-chevron-left"></i>
+                    </button>
+
+                    <div className="compact-page-numbers">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNum = i + Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+                        if (pageNum > totalPages) return null;
+                        return (
+                          <button
+                            key={pageNum}
+                            className={`compact-page-btn ${currentPage === pageNum ? 'active' : ''}`}
+                            onClick={() => setCurrentPage(pageNum)}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      className="compact-page-btn"
+                      disabled={currentPage >= totalPages}
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                    >
+                      <i className="fas fa-chevron-right"></i>
+                    </button>
+
+                    <div className="compact-page-info">
+                      第 {currentPage} / {totalPages} 页
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 };
 

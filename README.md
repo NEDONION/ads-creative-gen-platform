@@ -284,19 +284,6 @@ git push origin feature/your-feature
 # 5. 创建 Pull Request
 ```
 
-### Commit 规范
-
-- `feat:` 新功能
-- `fix:` 修复bug
-- `docs:` 文档更新
-- `style:` 代码格式
-- `refactor:` 重构
-- `test:` 测试
-
-## 📝 许可证
-
-MIT License
-
 ## 🆘 常见问题
 
 ### 启动失败
@@ -316,9 +303,3 @@ MIT License
 # 重置数据库
 go run cmd/migrate/main.go -action reset
 ```
-
-更多问题请查看 [开发指南](docs/development.md) 或提交 Issue。
-
----
-
-**Made with ❤️ using Go, React and AI**
