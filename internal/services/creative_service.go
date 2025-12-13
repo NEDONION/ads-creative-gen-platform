@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"ads-creative-gen-platform/config"
 	"ads-creative-gen-platform/internal/models"
 	"ads-creative-gen-platform/pkg/database"
 
@@ -17,6 +18,7 @@ import (
 type CreativeService struct {
 	tongyiClient *TongyiClient
 	qiniuService *QiniuService
+	traceService *TraceService
 }
 
 // NewCreativeService 创建服务
@@ -24,6 +26,7 @@ func NewCreativeService() *CreativeService {
 	return &CreativeService{
 		tongyiClient: NewTongyiClient(),
 		qiniuService: NewQiniuService(),
+		traceService: NewTraceService(),
 	}
 }
 
@@ -110,15 +113,20 @@ func (s *CreativeService) processTask(taskID uint) {
 	// 调用通义万相生成图片
 	var resp *ImageGenResponse
 	var err error
+	traceID, _ := s.traceService.StartTrace("tongyi-image", config.TongyiConfig.ImageModel, task.UUID, prompt)
 
 	if task.ProductImageURL != "" {
 		// 带商品图生成
 		log.Printf("开始带商品图生成: %s", task.ProductImageURL)
+		callStart := time.Now()
 		resp, err = s.tongyiClient.GenerateImageWithProduct(prompt, task.ProductImageURL, "1024*1024", task.NumVariants)
+		_ = s.traceService.AddStep(traceID, "generate_image_with_product", "tongyi-image", statusFromErr(err), prompt, "", errMsg(err), callStart, time.Now())
 	} else {
 		// 纯文本生成
 		log.Printf("开始纯文本图像生成")
+		callStart := time.Now()
 		resp, err = s.tongyiClient.GenerateImage(prompt, "1024*1024", task.NumVariants)
+		_ = s.traceService.AddStep(traceID, "generate_image", "tongyi-image", statusFromErr(err), prompt, "", errMsg(err), callStart, time.Now())
 	}
 
 	if err != nil {
@@ -128,6 +136,7 @@ func (s *CreativeService) processTask(taskID uint) {
 			"error_message": fmt.Sprintf("API调用失败: %v", err),
 			"progress":      100,
 		})
+		_ = s.traceService.FinishTrace(traceID, "failed", "", errMsg(err))
 		return
 	}
 
@@ -138,6 +147,7 @@ func (s *CreativeService) processTask(taskID uint) {
 
 	// 轮询任务状态
 	tongyiTaskID := resp.Output.TaskID
+	pollStart := time.Now()
 	for i := 0; i < 60; i++ { // 增加等待时间到120秒 (60次*2秒)
 		time.Sleep(2 * time.Second)
 
@@ -151,6 +161,7 @@ func (s *CreativeService) processTask(taskID uint) {
 
 		if queryResp.Output.TaskStatus == "SUCCEEDED" {
 			log.Printf("任务 %s 成功, 生成 %d 个结果", tongyiTaskID, len(queryResp.Output.Results))
+			_ = s.traceService.AddStep(traceID, "poll_success", "tongyi-image", "success", "", "", "", pollStart, time.Now())
 
 			firstPublicURL := ""
 
@@ -280,6 +291,7 @@ func (s *CreativeService) processTask(taskID uint) {
 			} else {
 				log.Printf("任务 %d 成功完成，包含 %d 个资产", taskID, len(queryResp.Output.Results))
 			}
+			_ = s.traceService.FinishTrace(traceID, "success", firstPublicURL, "")
 
 			return
 
@@ -300,6 +312,7 @@ func (s *CreativeService) processTask(taskID uint) {
 			} else {
 				log.Printf("任务 %d 失败: %s", taskID, errorMsg)
 			}
+			_ = s.traceService.FinishTrace(traceID, "failed", "", errorMsg)
 			return
 		}
 
@@ -321,6 +334,7 @@ func (s *CreativeService) processTask(taskID uint) {
 	} else {
 		log.Printf("任务 %d 超时: %s", taskID, timeoutErr)
 	}
+	_ = s.traceService.FinishTrace(traceID, "failed", "", timeoutErr)
 }
 
 // generatePrompt 生成提示词
@@ -345,6 +359,20 @@ func (s *CreativeService) generatePrompt(title string, sellingPoints models.Stri
 	prompt += ", high quality, professional photography, clean background, product focused"
 
 	return prompt
+}
+
+func statusFromErr(err error) string {
+	if err != nil {
+		return "failed"
+	}
+	return "success"
+}
+
+func errMsg(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }
 
 // GetTask 获取任务详情
@@ -424,6 +452,7 @@ func (s *CreativeService) ListAllAssets(query ListAssetsQuery) ([]CreativeAssetD
 	for _, asset := range assets {
 		creativeData := CreativeAssetDTO{
 			ID:            asset.UUID,
+			NumericID:     asset.ID,
 			Format:        asset.Format,
 			ImageURL:      getPublicURL(&asset), // 优先使用公共URL
 			Width:         asset.Width,
@@ -442,6 +471,7 @@ func (s *CreativeService) ListAllAssets(query ListAssetsQuery) ([]CreativeAssetD
 // CreativeAssetDTO 素材数据传输对象
 type CreativeAssetDTO struct {
 	ID            string             `json:"id"`
+	NumericID     uint               `json:"numeric_id"`
 	Format        string             `json:"format"`
 	ImageURL      string             `json:"image_url"`
 	Width         int                `json:"width"`

@@ -14,10 +14,11 @@ import type {
   StartCreativeRequest,
   DeleteTaskResponse,
   ExperimentVariantInput,
-  Experiment,
   ExperimentMetrics,
   ExperimentsListData,
   ExperimentAssignData,
+  TraceListData,
+  TraceItem,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
@@ -88,16 +89,12 @@ export const experimentAPI = {
     const res = await apiClient.get<ApiResponse<ExperimentsListData>>('/experiments', { params });
     return res.data;
   },
-  assign: async (id: string, userKey?: string): Promise<ApiResponse<ExperimentAssignData>> => {
-    const res = await apiClient.get<ApiResponse<ExperimentAssignData>>(`/experiments/${id}/assign`, { params: { user_key: userKey } });
-    return res.data;
-  },
   updateStatus: async (id: string, status: string): Promise<ApiResponse<any>> => {
     const res = await apiClient.post<ApiResponse<any>>(`/experiments/${id}/status`, { status });
     return res.data;
   },
-  assign: async (id: string, userKey?: string): Promise<ApiResponse<{ creative_id: number }>> => {
-    const res = await apiClient.get<ApiResponse<{ creative_id: number }>>(`/experiments/${id}/assign`, { params: { user_key: userKey } });
+  assign: async (id: string, userKey?: string): Promise<ApiResponse<ExperimentAssignData>> => {
+    const res = await apiClient.get<ApiResponse<ExperimentAssignData>>(`/experiments/${id}/assign`, { params: { user_key: userKey } });
     return res.data;
   },
   hit: async (id: string, creativeId: number): Promise<ApiResponse<any>> => {
@@ -110,6 +107,17 @@ export const experimentAPI = {
   },
   metrics: async (id: string): Promise<ApiResponse<ExperimentMetrics>> => {
     const res = await apiClient.get<ApiResponse<ExperimentMetrics>>(`/experiments/${id}/metrics`);
+    return res.data;
+  },
+};
+
+export const traceAPI = {
+  list: async (params: { page?: number; page_size?: number; status?: string; model_name?: string; trace_id?: string } = {}): Promise<ApiResponse<TraceListData>> => {
+    const res = await apiClient.get<ApiResponse<TraceListData>>('/model_traces', { params });
+    return res.data;
+  },
+  detail: async (traceId: string): Promise<ApiResponse<TraceItem>> => {
+    const res = await apiClient.get<ApiResponse<TraceItem>>(`/model_traces/${traceId}`);
     return res.data;
   },
 };

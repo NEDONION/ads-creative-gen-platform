@@ -127,12 +127,12 @@ const ExperimentPlugin: React.FC<ExperimentPluginProps> = ({
                   {creativeInfo.product_name || '未设置商品名'}
                 </div>
                 {creativeInfo.selling_points && creativeInfo.selling_points.length > 0 && (
-                  <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                  <div style={{ fontSize: 12, color: '#666', marginTop: 4, lineHeight: 1.4 }}>
                     卖点：{creativeInfo.selling_points.slice(0, 2).join(' / ')}
                   </div>
                 )}
                 {creativeInfo.cta_text && (
-                  <div style={{ fontSize: 12, color: '#111', marginTop: 4 }}>
+                  <div style={{ fontSize: 12, color: '#111', marginTop: 4, fontWeight: 600 }}>
                     CTA：{creativeInfo.cta_text}
                   </div>
                 )}

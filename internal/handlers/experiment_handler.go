@@ -63,14 +63,15 @@ func (h *ExperimentHandler) ListExperiments(c *gin.Context) {
 		StartAt      *time.Time `json:"start_at,omitempty"`
 		EndAt        *time.Time `json:"end_at,omitempty"`
 		Variants     []struct {
-			CreativeID  uint    `json:"creative_id"`
-			Weight      float64 `json:"weight"`
-			BucketStart int     `json:"bucket_start"`
-			BucketEnd   int     `json:"bucket_end"`
-			Title       string  `json:"title,omitempty"`
-			ProductName string  `json:"product_name,omitempty"`
-			ImageURL    string  `json:"image_url,omitempty"`
-			CTAText     string  `json:"cta_text,omitempty"`
+			CreativeID    uint     `json:"creative_id"`
+			Weight        float64  `json:"weight"`
+			BucketStart   int      `json:"bucket_start"`
+			BucketEnd     int      `json:"bucket_end"`
+			Title         string   `json:"title,omitempty"`
+			ProductName   string   `json:"product_name,omitempty"`
+			ImageURL      string   `json:"image_url,omitempty"`
+			CTAText       string   `json:"cta_text,omitempty"`
+			SellingPoints []string `json:"selling_points,omitempty"`
 		} `json:"variants,omitempty"`
 	}
 
@@ -98,23 +99,25 @@ func (h *ExperimentHandler) ListExperiments(c *gin.Context) {
 		}
 		for _, v := range exp.Variants {
 			item.Variants = append(item.Variants, struct {
-				CreativeID  uint    `json:"creative_id"`
-				Weight      float64 `json:"weight"`
-				BucketStart int     `json:"bucket_start"`
-				BucketEnd   int     `json:"bucket_end"`
-				Title       string  `json:"title,omitempty"`
-				ProductName string  `json:"product_name,omitempty"`
-				ImageURL    string  `json:"image_url,omitempty"`
-				CTAText     string  `json:"cta_text,omitempty"`
+				CreativeID    uint     `json:"creative_id"`
+				Weight        float64  `json:"weight"`
+				BucketStart   int      `json:"bucket_start"`
+				BucketEnd     int      `json:"bucket_end"`
+				Title         string   `json:"title,omitempty"`
+				ProductName   string   `json:"product_name,omitempty"`
+				ImageURL      string   `json:"image_url,omitempty"`
+				CTAText       string   `json:"cta_text,omitempty"`
+				SellingPoints []string `json:"selling_points,omitempty"`
 			}{
-				CreativeID:  v.CreativeID,
-				Weight:      v.Weight,
-				BucketStart: v.BucketStart,
-				BucketEnd:   v.BucketEnd,
-				Title:       v.Title,
-				ProductName: v.ProductName,
-				ImageURL:    v.ImageURL,
-				CTAText:     v.CTAText,
+				CreativeID:    v.CreativeID,
+				Weight:        v.Weight,
+				BucketStart:   v.BucketStart,
+				BucketEnd:     v.BucketEnd,
+				Title:         v.Title,
+				ProductName:   v.ProductName,
+				ImageURL:      v.ImageURL,
+				CTAText:       v.CTAText,
+				SellingPoints: v.SellingPoints,
 			})
 		}
 		resp.Experiments = append(resp.Experiments, item)
@@ -159,12 +162,14 @@ func (h *ExperimentHandler) Assign(c *gin.Context) {
 		resp["title"] = result.Asset.Title
 		resp["product_name"] = result.Asset.ProductName
 		resp["cta_text"] = result.Asset.CTAText
+		resp["selling_points"] = result.Asset.Task.SellingPoints
 		resp["image_url"] = result.Asset.PublicURL
 	} else {
 		// 使用存储在变体表的元数据
 		resp["title"] = result.Variant.Title
 		resp["product_name"] = result.Variant.ProductName
 		resp["cta_text"] = result.Variant.CTAText
+		resp["selling_points"] = result.Variant.SellingPoints
 		resp["image_url"] = result.Variant.ImageURL
 	}
 	c.JSON(http.StatusOK, SuccessResponse(resp))

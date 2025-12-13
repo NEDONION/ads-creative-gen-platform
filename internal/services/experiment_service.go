@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,8 +27,8 @@ type CreateExperimentInput struct {
 }
 
 type ExperimentVariantInput struct {
-	CreativeID uint    `json:"creative_id"`
-	Weight     float64 `json:"weight"` // 0-1
+	CreativeID string  `json:"creative_id"` // uuid 或 数字字符串
+	Weight     float64 `json:"weight"`      // 0-1
 }
 
 // AssignedVariant 分流结果
@@ -114,9 +115,24 @@ func (s *ExperimentService) CreateExperiment(input CreateExperimentInput) (*mode
 	acc := 0
 	var variants []models.ExperimentVariant
 	for _, v := range input.Variants {
+		if v.CreativeID == "" {
+			return nil, errors.New("creative_id required")
+		}
 		var asset models.CreativeAsset
-		// 拉取创意素材元数据（忽略错误，继续创建实验）
-		_ = database.DB.Where("id = ?", v.CreativeID).First(&asset).Error
+		var creativeNumericID uint
+		// 尝试数字ID
+		if parsed, err := strconv.ParseUint(v.CreativeID, 10, 64); err == nil {
+			creativeNumericID = uint(parsed)
+			_ = database.DB.Where("id = ?", creativeNumericID).First(&asset).Error
+		} else {
+			// 尝试 UUID
+			if err := database.DB.Where("uuid = ?", v.CreativeID).First(&asset).Error; err == nil {
+				creativeNumericID = asset.ID
+			}
+		}
+		if creativeNumericID == 0 {
+			return nil, fmt.Errorf("creative_id %s not found", v.CreativeID)
+		}
 
 		width := int(math.Round((v.Weight / totalWeight) * 10000))
 		if width <= 0 {
@@ -130,15 +146,16 @@ func (s *ExperimentService) CreateExperiment(input CreateExperimentInput) (*mode
 		acc = end + 1
 
 		variants = append(variants, models.ExperimentVariant{
-			ExperimentID: exp.ID,
-			CreativeID:   v.CreativeID,
-			Weight:       v.Weight,
-			BucketStart:  start,
-			BucketEnd:    end,
-			Title:        asset.Title,
-			ProductName:  asset.ProductName,
-			ImageURL:     asset.PublicURL,
-			CTAText:      asset.CTAText,
+			ExperimentID:  exp.ID,
+			CreativeID:    creativeNumericID,
+			Weight:        v.Weight,
+			BucketStart:   start,
+			BucketEnd:     end,
+			Title:         asset.Title,
+			ProductName:   asset.ProductName,
+			ImageURL:      asset.PublicURL,
+			CTAText:       asset.CTAText,
+			SellingPoints: asset.SellingPoints,
 		})
 	}
 	// 调整最后一个覆盖到 9999

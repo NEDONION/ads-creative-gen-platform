@@ -80,6 +80,7 @@ export interface StartCreativeRequest {
 
 export interface AssetData {
   id: string;
+  numeric_id?: number;
   task_id: number;
   format: string;
   width: number;
@@ -147,7 +148,7 @@ export interface ListTasksParams {
 
 // Experiments
 export interface ExperimentVariantInput {
-  creative_id: number;
+  creative_id: number | string;
   weight: number;
   bucket_start?: number;
   bucket_end?: number;
@@ -192,6 +193,41 @@ export interface ExperimentAssignData {
 
 export interface ExperimentsListData {
   experiments: Experiment[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+// Trace 页面
+export interface TraceStep {
+  step_name: string;
+  component: string;
+  status: string;
+  duration_ms: number;
+  start_at: string;
+  end_at: string;
+  input_preview?: string;
+  output_preview?: string;
+  error_message?: string;
+}
+
+export interface TraceItem {
+  trace_id: string;
+  model_name: string;
+  model_version: string;
+  status: string;
+  duration_ms: number;
+  start_at: string;
+  end_at: string;
+  source?: string;
+  input_preview?: string;
+  output_preview?: string;
+  error_message?: string;
+  steps?: TraceStep[];
+}
+
+export interface TraceListData {
+  traces: TraceItem[];
   total: number;
   page: number;
   page_size: number;

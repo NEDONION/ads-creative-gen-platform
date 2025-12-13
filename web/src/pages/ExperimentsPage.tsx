@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { experimentAPI, creativeAPI } from '../services/api';
+import Sidebar from '../components/Sidebar';
 import type { ExperimentVariantInput, ExperimentMetrics, TaskListItem, Experiment } from '../types';
 
 const ExperimentsPage: React.FC = () => {
   const [name, setName] = useState('');
   const [productName, setProductName] = useState('');
-  const [variants, setVariants] = useState<ExperimentVariantInput[]>([{ creative_id: 0, weight: 0.5 }, { creative_id: 0, weight: 0.5 }]);
+  const [variants, setVariants] = useState<ExperimentVariantInput[]>([{ creative_id: '', weight: 0.5 }, { creative_id: '', weight: 0.5 }]);
   const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [expId, setExpId] = useState<string>('');
   const [metrics, setMetrics] = useState<ExperimentMetrics | null>(null);
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [productOptions, setProductOptions] = useState<string[]>([]);
-  const [creativeOptions, setCreativeOptions] = useState<{ id: number; label: string; thumb?: string; product_name?: string; cta_text?: string; selling_points?: string[]; title?: string }[]>([]);
+  const [creativeOptions, setCreativeOptions] = useState<{ id: string; label: string; thumb?: string; product_name?: string; cta_text?: string; selling_points?: string[]; title?: string }[]>([]);
   const [experimentList, setExperimentList] = useState<Experiment[]>([]);
   const [listLoading, setListLoading] = useState(false);
   const [selectedExp, setSelectedExp] = useState<Experiment | null>(null);
@@ -68,14 +69,12 @@ const ExperimentsPage: React.FC = () => {
           }
         });
 
-          const options = (assetsRes.data.assets || [])
+        const options = (assetsRes.data.assets || [])
           .map((asset) => {
-            const idNum = parseInt(asset.id, 10);
-            if (Number.isNaN(idNum)) return null;
             const resolvedProduct = asset.product_name || taskProductMap[String(asset.task_id)];
             const label = asset.title || resolvedProduct || '创意';
             return {
-              id: idNum,
+              id: asset.id,
               label: `${label} (${asset.id})`,
               thumb: asset.image_url || asset.public_url,
               product_name: resolvedProduct,
@@ -84,7 +83,7 @@ const ExperimentsPage: React.FC = () => {
               title: asset.title,
             };
           })
-          .filter((v): v is { id: number; label: string; thumb?: string; product_name?: string; cta_text?: string; selling_points?: string[]; title?: string } => Boolean(v));
+          .filter((v) => Boolean(v && v.id));
         setCreativeOptions(options);
       }
     } catch (err) {
@@ -113,7 +112,7 @@ const ExperimentsPage: React.FC = () => {
       setMessage('请填写实验名称');
       return;
     }
-    if (variants.some((v) => v.creative_id === 0 || v.weight <= 0)) {
+    if (variants.some((v) => !v.creative_id || v.weight <= 0)) {
       setMessage('请填写有效的创意ID和权重');
       return;
     }
@@ -185,7 +184,7 @@ const ExperimentsPage: React.FC = () => {
     }
   };
 
-  const updateVariant = (idx: number, field: keyof ExperimentVariantInput, value: number) => {
+  const updateVariant = (idx: number, field: keyof ExperimentVariantInput, value: number | string) => {
     setVariants((prev) => {
       const copy = [...prev];
       copy[idx] = { ...copy[idx], [field]: value };
@@ -194,17 +193,17 @@ const ExperimentsPage: React.FC = () => {
   };
 
   const addVariant = () => {
-    setVariants((prev) => [...prev, { creative_id: 0, weight: 0.1 }]);
+    setVariants((prev) => [...prev, { creative_id: '', weight: 0.1 }]);
   };
 
   const removeVariant = (idx: number) => {
     setVariants((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const getCreativeLabel = (id: number) => {
-    const opt = creativeOptions.find((o) => o.id === id);
+  const getCreativeLabel = (id: number | string) => {
+    const opt = creativeOptions.find((o) => o.id === String(id));
     if (opt) return opt.label;
-    const t = tasks.find((t) => t.id && t.id.startsWith(id.toString().substring(0, 1))); // fallback
+    const t = tasks.find((t) => t.id && t.id.startsWith(String(id).substring(0, 1))); // fallback
     return t ? `${t.title} (${t.id.slice(0, 6)})` : id;
   };
 
@@ -213,7 +212,7 @@ const ExperimentsPage: React.FC = () => {
     ? creativeOptions.filter((opt) => normalizeName(opt.product_name) === normalizeName(productName))
     : creativeOptions;
 
-  const getCreativeInfo = (id: number) => creativeOptions.find((opt) => opt.id === id);
+  const getCreativeInfo = (id: number | string) => creativeOptions.find((opt) => opt.id === String(id));
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -248,6 +247,12 @@ const ExperimentsPage: React.FC = () => {
   };
 
   const handleSelectExperiment = (id: string) => {
+    // 切换展开/收起
+    if (selectedExp && selectedExp.experiment_id === id) {
+      setSelectedExp(null);
+      setMetrics(null);
+      return;
+    }
     setExpId(id);
     setMetrics(null);
     const hit = experimentList.find((e) => e.experiment_id === id) || null;
@@ -260,41 +265,13 @@ const ExperimentsPage: React.FC = () => {
     if (!productName) return;
     const allowedIds = new Set(filteredCreativeOptions.map((o) => o.id));
     setVariants((prev) =>
-      prev.map((v) => (allowedIds.has(v.creative_id) ? v : { ...v, creative_id: 0 }))
+      prev.map((v) => (allowedIds.has(String(v.creative_id)) ? v : { ...v, creative_id: '' }))
     );
   }, [productName, creativeOptions]);
 
   return (
     <div className="app">
-      <div className="sidebar">
-        <div className="sidebar-header">
-          <h2>
-            <i className="fas fa-bullseye"></i> <span>创意平台</span>
-          </h2>
-        </div>
-        <nav className="nav-menu">
-          <a href="/" className="nav-item">
-            <i className="fas fa-home"></i>
-            <span>仪表盘</span>
-          </a>
-          <a href="/creative" className="nav-item">
-            <i className="fas fa-magic"></i>
-            <span>创意生成</span>
-          </a>
-          <a href="/assets" className="nav-item">
-            <i className="fas fa-images"></i>
-            <span>创意管理</span>
-          </a>
-          <a href="/tasks" className="nav-item">
-            <i className="fas fa-tasks"></i>
-            <span>任务管理</span>
-          </a>
-          <a href="/experiments" className="nav-item active">
-            <i className="fas fa-vial"></i>
-            <span>实验</span>
-          </a>
-        </nav>
-      </div>
+      <Sidebar />
 
       <div className="main-content">
         <div className="header">
@@ -314,10 +291,12 @@ const ExperimentsPage: React.FC = () => {
               </div>
             )}
 
-            <div className="compact-card">
+            <div className="compact-card gradient-card">
               <div className="compact-card-header">
-                <h3 className="compact-card-title">实验列表</h3>
-                <div className="compact-card-hint">查看当前 / 历史实验并快速选择实验ID</div>
+                <div>
+                  <h3 className="compact-card-title">实验列表</h3>
+                  <div className="compact-card-hint">轻量面板：查看 / 激活 / 停止 / 指标</div>
+                </div>
                 <button className="compact-btn compact-btn-text compact-btn-sm" onClick={loadExperiments} disabled={listLoading}>
                   <i className="fas fa-sync-alt"></i>
                   <span>{listLoading ? '加载中...' : '刷新'}</span>
@@ -348,12 +327,21 @@ const ExperimentsPage: React.FC = () => {
                           <tr key={exp.experiment_id}>
                             <td>{exp.name}</td>
                             <td>{exp.product_name || '-'}</td>
-                            <td>{exp.status}</td>
+                            <td>
+                              <span className={`status-badge status-${exp.status}`}>
+                                {exp.status === 'active' && <i className="fas fa-play-circle" style={{ color: '#52c41a' }}></i>}
+                                {exp.status === 'archived' && <i className="fas fa-stop-circle" style={{ color: '#ff7875' }}></i>}
+                                {exp.status}
+                              </span>
+                            </td>
                             <td>{exp.created_at ? new Date(exp.created_at).toLocaleString() : '-'}</td>
                             <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{exp.experiment_id}</td>
                             <td>
-                              <button className="compact-btn compact-btn-outline compact-btn-xs" onClick={() => handleSelectExperiment(exp.experiment_id)}>
-                                查看
+                              <button
+                                className={`compact-btn compact-btn-xs ${selectedExp?.experiment_id === exp.experiment_id ? 'compact-btn-outline' : 'compact-btn-primary'}`}
+                                onClick={() => handleSelectExperiment(exp.experiment_id)}
+                              >
+                                {selectedExp?.experiment_id === exp.experiment_id ? '收起' : '查看'}
                               </button>
                             </td>
                           </tr>
@@ -364,17 +352,23 @@ const ExperimentsPage: React.FC = () => {
                 )}
               </div>
               {selectedExp && (
-                <div className="compact-card" style={{ marginTop: 12 }}>
-                  <div className="compact-card-header">
-                    <h3 className="compact-card-title">实验详情</h3>
-                    <div className="compact-card-hint">时长 / 定义 / 变体素材</div>
-                    <div className="compact-card-actions" style={{ display: 'flex', gap: 8 }}>
+                <div className="compact-card" style={{ marginTop: 12, borderColor: '#e6f0ff' }}>
+                  <div className="compact-card-header" style={{ alignItems: 'flex-start' }}>
+                    <div>
+                      <h3 className="compact-card-title">实验详情</h3>
+                      <div className="compact-card-hint">时长 / 定义 / 变体素材</div>
+                    </div>
+                    <div className="compact-card-actions" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       {selectedExp.status !== 'archived' && (
                         <>
-                          <button className="compact-btn compact-btn-outline compact-btn-xs" onClick={() => handleActivate(selectedExp.experiment_id)}>
+                          <button className="compact-btn compact-btn-primary compact-btn-xs" onClick={() => handleActivate(selectedExp.experiment_id)}>
                             激活
                           </button>
-                          <button className="compact-btn compact-btn-outline compact-btn-xs" onClick={() => handleStop(selectedExp.experiment_id)}>
+                          <button
+                            className="compact-btn compact-btn-danger compact-btn-xs"
+                            style={{ marginLeft: 'auto' }}
+                            onClick={() => handleStop(selectedExp.experiment_id)}
+                          >
                             停止
                           </button>
                         </>
@@ -388,10 +382,10 @@ const ExperimentsPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="compact-card-body">
-                    <div className="compact-form-grid">
+                    <div className="compact-form-grid fancy-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
                       <div className="compact-form-group">
                         <label className="compact-label">实验ID</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <code style={{ fontSize: 12 }}>{selectedExp.experiment_id}</code>
                           <button className="compact-btn compact-btn-outline compact-btn-xs" onClick={() => copyToClipboard(selectedExp.experiment_id)}>
                             复制
@@ -400,22 +394,22 @@ const ExperimentsPage: React.FC = () => {
                       </div>
                       <div className="compact-form-group">
                         <label className="compact-label">状态</label>
-                        <div>{selectedExp.status}</div>
+                        <div><span className={`status-badge status-${selectedExp.status}`}>{selectedExp.status}</span></div>
                       </div>
                       <div className="compact-form-group">
                         <label className="compact-label">时长</label>
                         <div>{formatDuration(selectedExp.start_at || selectedExp.created_at, selectedExp.end_at)}</div>
                       </div>
                       <div className="compact-form-group">
-                        <label className="compact-label">创建时间</label>
+                        <label className="compact-label">创建</label>
                         <div>{formatTime(selectedExp.created_at)}</div>
                       </div>
                       <div className="compact-form-group">
-                        <label className="compact-label">开始时间</label>
+                        <label className="compact-label">开始</label>
                         <div>{formatTime(selectedExp.start_at)}</div>
                       </div>
                       <div className="compact-form-group">
-                        <label className="compact-label">结束时间</label>
+                        <label className="compact-label">结束</label>
                         <div>{formatTime(selectedExp.end_at)}</div>
                       </div>
                     </div>
@@ -462,7 +456,7 @@ const ExperimentsPage: React.FC = () => {
                       })}
                     </div>
 
-                    {metrics && (
+                    {metrics && metrics.variants && (
                       <>
                         <div className="compact-section-title" style={{ marginTop: 12 }}>当前指标</div>
                         <div className="compact-table-wrapper">
@@ -476,7 +470,7 @@ const ExperimentsPage: React.FC = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {metrics.variants.map((v) => (
+                              {(metrics.variants || []).map((v) => (
                                 <tr key={v.creative_id}>
                                   <td>{v.creative_id}</td>
                                   <td>{v.impressions}</td>
@@ -532,7 +526,7 @@ const ExperimentsPage: React.FC = () => {
                         <select
                           className="compact-input"
                           value={v.creative_id || ''}
-                          onChange={(e) => updateVariant(idx, 'creative_id', parseInt(e.target.value, 10) || 0)}
+                          onChange={(e) => updateVariant(idx, 'creative_id', e.target.value)}
                         >
                           <option value="">请选择创意</option>
                           {filteredCreativeOptions.map((opt) => (
@@ -541,7 +535,7 @@ const ExperimentsPage: React.FC = () => {
                             </option>
                           ))}
                         </select>
-                        {v.creative_id !== 0 && (
+                        {v.creative_id && (
                           <div className="compact-thumb" style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
                             {creativeOptions.find((opt) => opt.id === v.creative_id)?.thumb ? (
                               <img

@@ -11,9 +11,9 @@
   --light: #fafafa;
   --gray: #8c8c8c;
   --border: #e8e8e8;
-  --sidebar-width: 200px;
-  --header-height: 52px;
-  --card-radius: 8px;
+  --sidebar-width: 160px;
+  --header-height: 44px;
+  --card-radius: 6px;
   --transition: all 0.2s ease;
 }
 
@@ -21,11 +21,11 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', 'SF Pro Display', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
 }
 
 body {
-  background-color: #f5f5f5;
+  background-color: #ffffff;
   color: var(--dark);
   line-height: 1.6;
 }
@@ -33,6 +33,7 @@ body {
 .app {
   display: flex;
   min-height: 100vh;
+  background: #ffffff;
 }
 
 /* 侧边栏 - 紧凑设计 */
@@ -49,7 +50,7 @@ body {
 }
 
 .sidebar-header {
-  padding: 16px;
+  padding: 10px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -68,14 +69,14 @@ body {
 }
 
 .nav-menu {
-  padding: 12px 0;
+  padding: 4px 0;
 }
 
 .nav-item {
-  padding: 10px 16px;
+  padding: 7px 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: var(--gray);
   text-decoration: none;
   font-size: 13px;
@@ -107,6 +108,7 @@ body {
 .main-content {
   flex: 1;
   margin-left: var(--sidebar-width);
+  background: #ffffff;
 }
 
 /* 头部 - 紧凑设计 */
@@ -116,7 +118,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 12px;
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -152,20 +154,20 @@ body {
 
 /* 内容区域 - 极致紧凑 */
 .content {
-  padding: 6px;
-  background: #f5f5f5;
+  padding: 10px 12px;
+  background: #ffffff;
 }
 
 .card {
   background: white;
   border-radius: var(--card-radius);
   border: 1px solid var(--border);
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   overflow: hidden;
 }
 
 .card-header {
-  padding: 20px 24px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -179,15 +181,15 @@ body {
 }
 
 .card-body {
-  padding: 24px;
+  padding: 12px;
 }
 
 /* 统计卡片 */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .stat-card {
@@ -217,7 +219,7 @@ body {
 }
 
 .table th {
-  padding: 16px 20px;
+  padding: 10px 12px;
   text-align: left;
   font-weight: 600;
   color: var(--gray);
@@ -228,7 +230,7 @@ body {
 }
 
 .table td {
-  padding: 16px 20px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   color: var(--dark);
 }
@@ -243,9 +245,9 @@ body {
 
 /* 状态标签 */
 .status-badge {
-  padding: 4px 12px;
+  padding: 2px 8px;
   border-radius: 4px;
-  font-size: 0.8rem;
+  font-size: 11px;
   font-weight: 400;
   display: inline-flex;
   align-items: center;
@@ -274,6 +276,24 @@ body {
   background: #fff1f0;
   color: #ff4d4f;
   border: 1px solid #ffccc7;
+}
+
+.status-active {
+  background: #f6ffed;
+  color: #389e0d;
+  border: 1px solid #b7eb8f;
+}
+
+.status-archived {
+  background: #fff1f0;
+  color: #ff4d4f;
+  border: 1px solid #ffccc7;
+}
+
+.status-paused {
+  background: #e6f4ff;
+  color: #1677ff;
+  border: 1px solid #91caff;
 }
 
 /* 进度条 */
@@ -326,6 +346,17 @@ body {
   color: var(--primary);
 }
 
+.compact-btn-danger {
+  background: #ff4d4f;
+  color: #fff;
+  border: 1px solid #ff4d4f;
+}
+
+.compact-btn-danger:hover {
+  background: #d9363e;
+  border-color: #d9363e;
+  color: #fff;
+}
 .btn-sm {
   padding: 6px 12px;
   font-size: 0.85rem;

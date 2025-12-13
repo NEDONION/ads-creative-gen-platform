@@ -33,6 +33,7 @@ func main() {
 	// 创建处理器
 	creativeHandler := handlers.NewCreativeHandler()
 	experimentHandler := handlers.NewExperimentHandler()
+	traceHandler := handlers.NewTraceHandler()
 
 	// 健康检查
 	r.GET("/health", func(c *gin.Context) {
@@ -77,6 +78,10 @@ func main() {
 		v1.POST("/experiments/:id/hit", experimentHandler.Hit)
 		v1.POST("/experiments/:id/click", experimentHandler.Click)
 		v1.GET("/experiments/:id/metrics", experimentHandler.Metrics)
+
+		// Trace 调用链接口（目前为示例数据）
+		v1.GET("/model_traces", traceHandler.ListTraces)
+		v1.GET("/model_traces/:id", traceHandler.GetTrace)
 	}
 
 	// 启动服务

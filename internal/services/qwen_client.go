@@ -19,6 +19,7 @@ type QwenClient struct {
 	model   string
 	baseURL string
 	client  *http.Client
+	trace   *TraceService
 }
 
 // NewQwenClient 创建客户端
@@ -30,6 +31,7 @@ func NewQwenClient() *QwenClient {
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		trace: NewTraceService(),
 	}
 }
 
@@ -72,6 +74,8 @@ func (c *QwenClient) GenerateCopywriting(productName string) (*CopywritingResult
 		return nil, errors.New("product name is required")
 	}
 
+	traceID, _ := c.trace.StartTrace("qwen-llm", c.model, productName, productName)
+
 	req := CopywritingRequest{
 		Model: c.model,
 		Input: CopywritingInput{
@@ -91,27 +95,45 @@ func (c *QwenClient) GenerateCopywriting(productName string) (*CopywritingResult
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
 
+	callStart := time.Now()
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
+		_ = c.trace.AddStep(traceID, "llm_call", c.model, "failed", req.Input.Prompt, "", err.Error(), callStart, time.Now())
+		_ = c.trace.FinishTrace(traceID, "failed", "", err.Error())
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
+		_ = c.trace.AddStep(traceID, "llm_call", c.model, "failed", req.Input.Prompt, "", err.Error(), callStart, time.Now())
+		_ = c.trace.FinishTrace(traceID, "failed", "", err.Error())
 		return nil, fmt.Errorf("read response failed: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		_ = c.trace.AddStep(traceID, "llm_call", c.model, "failed", req.Input.Prompt, string(respBytes), fmt.Sprintf("status %d", resp.StatusCode), callStart, time.Now())
+		_ = c.trace.FinishTrace(traceID, "failed", "", fmt.Sprintf("status %d", resp.StatusCode))
 		return nil, fmt.Errorf("api error (status %d): %s", resp.StatusCode, string(respBytes))
 	}
 
 	var result CopywritingResponse
 	if err := json.Unmarshal(respBytes, &result); err != nil {
+		_ = c.trace.AddStep(traceID, "llm_call", c.model, "failed", req.Input.Prompt, string(respBytes), err.Error(), callStart, time.Now())
+		_ = c.trace.FinishTrace(traceID, "failed", "", err.Error())
 		return nil, fmt.Errorf("unmarshal response failed: %w", err)
 	}
 
-	return c.parseResponse(result, string(respBytes))
+	parsed, err := c.parseResponse(result, string(respBytes))
+	status := "success"
+	errMsg := ""
+	if err != nil {
+		status = "failed"
+		errMsg = err.Error()
+	}
+	_ = c.trace.AddStep(traceID, "llm_call", c.model, status, req.Input.Prompt, string(respBytes), errMsg, callStart, time.Now())
+	_ = c.trace.FinishTrace(traceID, status, string(respBytes), errMsg)
+	return parsed, err
 }
 
 // buildPrompt 构造提示词

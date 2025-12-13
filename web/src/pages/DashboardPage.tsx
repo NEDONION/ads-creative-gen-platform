@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { creativeAPI } from '../services/api';
+import Sidebar from '../components/Sidebar';
 
 // 统计卡片组件
 interface StatCardProps {
@@ -118,35 +119,7 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="app">
-      <div className="sidebar">
-        <div className="sidebar-header">
-          <h2>
-            <i className="fas fa-bullseye"></i> <span>创意平台</span>
-          </h2>
-        </div>
-        <nav className="nav-menu">
-          <a href="/" className="nav-item active">
-            <i className="fas fa-home"></i>
-            <span>仪表盘</span>
-          </a>
-          <a href="/creative" className="nav-item">
-            <i className="fas fa-magic"></i>
-            <span>创意生成</span>
-          </a>
-          <a href="/assets" className="nav-item">
-            <i className="fas fa-images"></i>
-            <span>素材管理</span>
-          </a>
-          <a href="/tasks" className="nav-item">
-            <i className="fas fa-tasks"></i>
-            <span>任务管理</span>
-          </a>
-          <a href="/experiments" className="nav-item">
-            <i className="fas fa-vial"></i>
-            <span>实验</span>
-          </a>
-        </nav>
-      </div>
+      <Sidebar />
 
       <div className="main-content">
         <div className="header">

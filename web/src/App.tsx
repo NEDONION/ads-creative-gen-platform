@@ -5,6 +5,7 @@ import TasksPage from './pages/TasksPage';
 import AssetsPage from './pages/AssetsPage';
 import CreativeGeneratorPage from './pages/CreativeGeneratorPage';
 import ExperimentsPage from './pages/ExperimentsPage';
+import TracePage from './pages/TracePage';
 
 const App: React.FC = () => {
   return (
@@ -15,6 +16,7 @@ const App: React.FC = () => {
         <Route path="/assets" element={<AssetsPage />} />
         <Route path="/creative" element={<CreativeGeneratorPage />} />
         <Route path="/experiments" element={<ExperimentsPage />} />
+        <Route path="/traces" element={<TracePage />} />
       </Routes>
     </Router>
   );
