@@ -8,6 +8,16 @@ import type {
   ListAssetsParams,
   TasksListData,
   ListTasksParams,
+  GenerateCopywritingRequest,
+  CopywritingCandidates,
+  ConfirmCopywritingRequest,
+  StartCreativeRequest,
+  DeleteTaskResponse,
+  ExperimentVariantInput,
+  Experiment,
+  ExperimentMetrics,
+  ExperimentsListData,
+  ExperimentAssignData,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
@@ -46,6 +56,61 @@ export const creativeAPI = {
   listTasks: async (params: ListTasksParams): Promise<ApiResponse<TasksListData>> => {
     const response = await apiClient.get<ApiResponse<TasksListData>>('/creative/tasks', { params });
     return response.data;
+  },
+
+  generateCopywriting: async (data: GenerateCopywritingRequest): Promise<ApiResponse<CopywritingCandidates>> => {
+    const response = await apiClient.post<ApiResponse<CopywritingCandidates>>('/copywriting/generate', data);
+    return response.data;
+  },
+
+  confirmCopywriting: async (data: ConfirmCopywritingRequest): Promise<ApiResponse<TaskData>> => {
+    const response = await apiClient.post<ApiResponse<TaskData>>('/copywriting/confirm', data);
+    return response.data;
+  },
+
+  startCreative: async (data: StartCreativeRequest): Promise<ApiResponse<TaskData>> => {
+    const response = await apiClient.post<ApiResponse<TaskData>>('/creative/start', data);
+    return response.data;
+  },
+
+  deleteTask: async (taskId: string): Promise<ApiResponse<DeleteTaskResponse>> => {
+    const response = await apiClient.delete<ApiResponse<DeleteTaskResponse>>(`/creative/task/${taskId}`);
+    return response.data;
+  },
+};
+
+export const experimentAPI = {
+  create: async (payload: { name: string; product_name?: string; variants: ExperimentVariantInput[] }): Promise<ApiResponse<{ experiment_id: string; status: string }>> => {
+    const res = await apiClient.post<ApiResponse<{ experiment_id: string; status: string }>>('/experiments', payload);
+    return res.data;
+  },
+  list: async (params: { page?: number; page_size?: number; status?: string } = {}): Promise<ApiResponse<ExperimentsListData>> => {
+    const res = await apiClient.get<ApiResponse<ExperimentsListData>>('/experiments', { params });
+    return res.data;
+  },
+  assign: async (id: string, userKey?: string): Promise<ApiResponse<ExperimentAssignData>> => {
+    const res = await apiClient.get<ApiResponse<ExperimentAssignData>>(`/experiments/${id}/assign`, { params: { user_key: userKey } });
+    return res.data;
+  },
+  updateStatus: async (id: string, status: string): Promise<ApiResponse<any>> => {
+    const res = await apiClient.post<ApiResponse<any>>(`/experiments/${id}/status`, { status });
+    return res.data;
+  },
+  assign: async (id: string, userKey?: string): Promise<ApiResponse<{ creative_id: number }>> => {
+    const res = await apiClient.get<ApiResponse<{ creative_id: number }>>(`/experiments/${id}/assign`, { params: { user_key: userKey } });
+    return res.data;
+  },
+  hit: async (id: string, creativeId: number): Promise<ApiResponse<any>> => {
+    const res = await apiClient.post<ApiResponse<any>>(`/experiments/${id}/hit`, { creative_id: creativeId });
+    return res.data;
+  },
+  click: async (id: string, creativeId: number): Promise<ApiResponse<any>> => {
+    const res = await apiClient.post<ApiResponse<any>>(`/experiments/${id}/click`, { creative_id: creativeId });
+    return res.data;
+  },
+  metrics: async (id: string): Promise<ApiResponse<ExperimentMetrics>> => {
+    const res = await apiClient.get<ApiResponse<ExperimentMetrics>>(`/experiments/${id}/metrics`);
+    return res.data;
   },
 };
 

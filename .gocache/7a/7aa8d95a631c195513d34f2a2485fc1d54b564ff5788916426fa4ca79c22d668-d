@@ -1,0 +1,9 @@
+./credentials_uptoken_signer.go
+./interfaces.go
+./multi_parts_uploader_v1.go
+./multi_parts_uploader_v2.go
+./params.go
+./resumable_recorder.go
+./schedulers.go
+./upload_manager.go
+./uploaders.go

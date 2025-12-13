@@ -1,0 +1,7 @@
+./download_manager.go
+./downloaders.go
+./interceptor.go
+./interfaces.go
+./signers.go
+./urls_provider.go
+./urls_provider_utils.go

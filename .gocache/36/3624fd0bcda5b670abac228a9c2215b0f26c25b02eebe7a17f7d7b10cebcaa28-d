@@ -1,0 +1,3 @@
+./fileutil.go
+./fileutil_darwin.go
+./test_deps.go

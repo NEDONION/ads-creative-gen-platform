@@ -1,0 +1,12 @@
+./at_libc2.go
+./at_sysnum_darwin.go
+./constants.go
+./eaccess_other.go
+./getentropy_darwin.go
+./kernel_version_other.go
+./net.go
+./net_darwin.go
+./nonblocking_libc.go
+./pty_darwin.go
+./user_darwin.go
+./asm_darwin.s

@@ -1,0 +1,6 @@
+./copywriting_service.go
+./creative_service.go
+./delete_task.go
+./qiniu_service.go
+./qwen_client.go
+./tongyi_client.go

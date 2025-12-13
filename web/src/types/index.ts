@@ -17,6 +17,10 @@ export interface CreativeData {
   image_url: string;
   width: number;
   height: number;
+  title?: string;
+  product_name?: string;
+  cta_text?: string;
+  selling_points?: string[];
 }
 
 export interface TaskDetailData {
@@ -34,6 +38,7 @@ export interface TaskDetailData {
   style?: string;
   cta_text?: string;
   num_variants?: number;
+  product_name?: string;
 }
 
 export interface GenerateRequest {
@@ -44,6 +49,33 @@ export interface GenerateRequest {
   style?: string;
   cta_text?: string;
   num_variants: number;
+}
+
+// 文案生成与确认
+export interface GenerateCopywritingRequest {
+  product_name: string;
+}
+
+export interface CopywritingCandidates {
+  task_id: string;
+  cta_candidates: string[];
+  selling_point_candidates: string[];
+}
+
+export interface ConfirmCopywritingRequest {
+  task_id: string;
+  selected_cta_index: number;
+  selected_sp_indexes: number[];
+  edited_cta?: string;
+  edited_sps?: string[];
+  product_image_url?: string;
+  style?: string;
+  num_variants?: number;
+  formats?: string[];
+}
+
+export interface StartCreativeRequest {
+  task_id: string;
 }
 
 export interface AssetData {
@@ -59,6 +91,10 @@ export interface AssetData {
   style?: string;
   created_at: string;
   updated_at: string;
+  title?: string;
+  product_name?: string;
+  cta_text?: string;
+  selling_points?: string[];
 }
 
 export interface AssetsListData {
@@ -84,6 +120,15 @@ export interface TaskListItem {
   created_at: string;
   completed_at?: string;
   error_message?: string;
+  product_name?: string;
+  cta_text?: string;
+  selling_points?: string[];
+  first_image?: string;
+}
+
+export interface DeleteTaskResponse {
+  task_id: string;
+  status: string;
 }
 
 export interface TasksListData {
@@ -98,4 +143,56 @@ export interface ListTasksParams {
   page?: number;
   page_size?: number;
   status?: string;
+}
+
+// Experiments
+export interface ExperimentVariantInput {
+  creative_id: number;
+  weight: number;
+  bucket_start?: number;
+  bucket_end?: number;
+  title?: string;
+  product_name?: string;
+  image_url?: string;
+  cta_text?: string;
+  selling_points?: string[];
+}
+
+export interface Experiment {
+  experiment_id: string;
+  name: string;
+  product_name?: string;
+  status: string;
+  created_at?: string;
+  start_at?: string;
+  end_at?: string;
+  variants?: ExperimentVariantInput[];
+}
+
+export interface ExperimentMetrics {
+  experiment_id: string;
+  variants: {
+    creative_id: number;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+  }[];
+}
+
+export interface ExperimentAssignData {
+  creative_id: number;
+  asset_uuid?: string;
+  task_id?: number;
+  title?: string;
+  product_name?: string;
+  cta_text?: string;
+  selling_points?: string[];
+  image_url?: string;
+}
+
+export interface ExperimentsListData {
+  experiments: Experiment[];
+  total: number;
+  page: number;
+  page_size: number;
 }

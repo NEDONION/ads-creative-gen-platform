@@ -117,6 +117,10 @@ const TasksPage: React.FC = () => {
             <i className="fas fa-tasks"></i>
             <span>任务管理</span>
           </a>
+          <a href="/experiments" className="nav-item">
+            <i className="fas fa-vial"></i>
+            <span>实验</span>
+          </a>
         </nav>
       </div>
 
@@ -172,12 +176,13 @@ const TasksPage: React.FC = () => {
                         <thead>
                           <tr>
                             <th style={{ width: '100px' }}>任务ID</th>
-                            <th>标题</th>
-                            <th style={{ width: '100px' }}>状态</th>
+                            <th>标题/商品</th>
+                            <th>文案</th>
+                            <th style={{ width: '140px' }}>状态</th>
                             <th style={{ width: '150px' }}>进度</th>
                             <th style={{ width: '120px' }}>创建时间</th>
                             <th style={{ width: '120px' }}>完成时间</th>
-                            <th style={{ width: '80px' }}>操作</th>
+                            <th style={{ width: '140px' }}>操作</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -188,8 +193,17 @@ const TasksPage: React.FC = () => {
                                   {task.id.substring(0, 8)}
                                 </code>
                               </td>
-                              <td className="compact-table-title">{task.title}</td>
-                              <td>{getStatusBadge(task.status)}</td>
+                              <td className="compact-table-title">
+                                <div>{task.title}</div>
+                                {task.product_name && <div style={{ color: '#8c8c8c', fontSize: 12 }}>商品：{task.product_name}</div>}
+                              </td>
+                              <td>
+                                {task.cta_text && <div style={{ fontWeight: 500 }}>CTA：{task.cta_text}</div>}
+                                {task.selling_points && task.selling_points.length > 0 && (
+                                  <div style={{ color: '#8c8c8c', fontSize: 12 }}>卖点：{task.selling_points.join('、')}</div>
+                                )}
+                              </td>
+                              <td style={{ minWidth: '140px' }}>{getStatusBadge(task.status)}</td>
                               <td>
                                 <div className="compact-progress-wrapper">
                                   <div className="compact-progress-bar">
@@ -211,6 +225,25 @@ const TasksPage: React.FC = () => {
                                   onClick={() => viewTask(task.id)}
                                 >
                                   详情
+                                </button>
+                                <button
+                                  className="compact-btn compact-btn-text compact-btn-xs"
+                                  style={{ color: '#ff4d4f' }}
+                                  onClick={async () => {
+                                    if (!window.confirm('确定删除该任务及其素材吗？')) return;
+                                    try {
+                                      const res = await creativeAPI.deleteTask(task.id);
+                                      if (res.code === 0) {
+                                        loadTasks();
+                                      } else {
+                                        alert(res.message || '删除失败');
+                                      }
+                                    } catch (err) {
+                                      alert('删除失败: ' + (err as Error).message);
+                                    }
+                                  }}
+                                >
+                                  删除
                                 </button>
                               </td>
                             </tr>
@@ -275,19 +308,37 @@ const TasksPage: React.FC = () => {
                 {selectedTask && (
                   <>
                     <div className="compact-detail-grid">
-                      <div className="compact-detail-item">
-                        <div className="compact-detail-label">标题</div>
-                        <div className="compact-detail-value">{selectedTask.title}</div>
-                      </div>
-                      <div className="compact-detail-item">
-                        <div className="compact-detail-label">状态</div>
-                        <div className="compact-detail-value">{getStatusBadge(selectedTask.status)}</div>
-                      </div>
-                      <div className="compact-detail-item">
-                        <div className="compact-detail-label">进度</div>
-                        <div className="compact-detail-value">
-                          <div className="compact-progress-wrapper">
-                            <div className="compact-progress-bar">
+                        <div className="compact-detail-item">
+                          <div className="compact-detail-label">标题</div>
+                          <div className="compact-detail-value">{selectedTask.title}</div>
+                        </div>
+                        {selectedTask.product_name && (
+                          <div className="compact-detail-item">
+                            <div className="compact-detail-label">商品名称</div>
+                            <div className="compact-detail-value">{selectedTask.product_name}</div>
+                          </div>
+                        )}
+                        <div className="compact-detail-item">
+                          <div className="compact-detail-label">状态</div>
+                          <div className="compact-detail-value">{getStatusBadge(selectedTask.status)}</div>
+                        </div>
+                        {selectedTask.cta_text && (
+                          <div className="compact-detail-item">
+                            <div className="compact-detail-label">CTA</div>
+                            <div className="compact-detail-value">{selectedTask.cta_text}</div>
+                          </div>
+                        )}
+                        {selectedTask.selling_points && selectedTask.selling_points.length > 0 && (
+                          <div className="compact-detail-item">
+                            <div className="compact-detail-label">卖点</div>
+                            <div className="compact-detail-value">{selectedTask.selling_points.join('、')}</div>
+                          </div>
+                        )}
+                        <div className="compact-detail-item">
+                          <div className="compact-detail-label">进度</div>
+                          <div className="compact-detail-value">
+                            <div className="compact-progress-wrapper">
+                              <div className="compact-progress-bar">
                               <div
                                 className="compact-progress-fill"
                                 style={{ width: `${selectedTask.progress}%` }}

@@ -115,7 +115,7 @@ func (c *TongyiClient) GenerateImage(prompt string, size string, n int) (*ImageG
 }
 
 // GenerateImageWithProduct 带商品图生成
-func (c *TongyiClient) GenerateImageWithProduct(prompt string, productImageURL string, size string) (*ImageGenResponse, error) {
+func (c *TongyiClient) GenerateImageWithProduct(prompt string, productImageURL string, size string, n int) (*ImageGenResponse, error) {
 	log.Printf("[通义客户端] 开始带商品图生成, 提示词: %s, 商品图URL: %s, 尺寸: %s", prompt, productImageURL, size)
 
 	if size == "" {
@@ -137,6 +137,10 @@ func (c *TongyiClient) GenerateImageWithProduct(prompt string, productImageURL s
 		size = "1024*1024" // 如果不支持，回退到默认尺寸
 	}
 
+	if n <= 0 {
+		n = 1
+	}
+
 	req := ImageGenRequest{
 		Model: config.TongyiConfig.ImageModel,
 		Input: ImageGenInput{
@@ -144,7 +148,7 @@ func (c *TongyiClient) GenerateImageWithProduct(prompt string, productImageURL s
 		},
 		Parameters: ImageGenParams{
 			Size:    size,
-			N:       1,
+			N:       n,
 			RefImg:  productImageURL,
 			RefMode: "repaint",
 		},

@@ -1,0 +1,5 @@
+./compatible.go
+./go1.15.go
+./go1.19.go
+./io.go
+./nopcloser.go

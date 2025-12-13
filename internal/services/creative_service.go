@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -44,8 +45,8 @@ func (s *CreativeService) CreateTask(input CreateTaskInput) (*models.CreativeTas
 	if len(input.Formats) == 0 {
 		input.Formats = []string{"1:1"}
 	}
-	if input.NumVariants == 0 {
-		input.NumVariants = 1
+	if input.NumVariants <= 0 {
+		input.NumVariants = 2 // 以2为基础
 	}
 
 	// 创建任务
@@ -101,6 +102,7 @@ func (s *CreativeService) processTask(taskID uint) {
 	// 生成提示词
 	prompt := s.generatePrompt(task.Title, task.SellingPoints, task.RequestedStyles)
 	log.Printf("生成的提示词: %s", prompt)
+	database.DB.Model(&task).Update("prompt_used", prompt)
 
 	// 更新进度
 	database.DB.Model(&task).Update("progress", 30)
@@ -112,7 +114,7 @@ func (s *CreativeService) processTask(taskID uint) {
 	if task.ProductImageURL != "" {
 		// 带商品图生成
 		log.Printf("开始带商品图生成: %s", task.ProductImageURL)
-		resp, err = s.tongyiClient.GenerateImageWithProduct(prompt, task.ProductImageURL, "1024*1024")
+		resp, err = s.tongyiClient.GenerateImageWithProduct(prompt, task.ProductImageURL, "1024*1024", task.NumVariants)
 	} else {
 		// 纯文本生成
 		log.Printf("开始纯文本图像生成")
@@ -149,6 +151,8 @@ func (s *CreativeService) processTask(taskID uint) {
 
 		if queryResp.Output.TaskStatus == "SUCCEEDED" {
 			log.Printf("任务 %s 成功, 生成 %d 个结果", tongyiTaskID, len(queryResp.Output.Results))
+
+			firstPublicURL := ""
 
 			// 保存生成的图片
 			for idx, result := range queryResp.Output.Results {
@@ -189,6 +193,10 @@ func (s *CreativeService) processTask(taskID uint) {
 						UUID: uuid.New().String(),
 					},
 					TaskID:           task.ID,
+					Title:            task.Title,
+					ProductName:      task.ProductName,
+					CTAText:          task.CTAText,
+					SellingPoints:    task.SellingPoints,
 					Format:           "1:1", // 根据实际尺寸确定格式
 					Width:            1024,
 					Height:           1024,
@@ -218,7 +226,7 @@ func (s *CreativeService) processTask(taskID uint) {
 							Width:            1024,
 							Height:           1024,
 							StorageType:      storageType,
-							PublicURL:        publicURL,    // 已拼接好的完整公共访问URL
+							PublicURL:        publicURL, // 已拼接好的完整公共访问URL
 							Style:            task.RequestedStyles[0],
 							VariantIndex:     &idx,
 							GenerationPrompt: prompt,
@@ -239,6 +247,14 @@ func (s *CreativeService) processTask(taskID uint) {
 				} else {
 					log.Printf("成功保存资产 %s 任务 %d URL: %s", asset.UUID, taskID, asset.PublicURL)
 				}
+
+				if idx == 0 {
+					firstPublicURL = publicURL
+				}
+			}
+			// 设置首图
+			if firstPublicURL != "" {
+				database.DB.Model(&task).Update("first_asset_url", firstPublicURL)
 			}
 
 			// 再次查询任务，确保在更新之前重新加载
@@ -340,6 +356,33 @@ func (s *CreativeService) GetTask(taskUUID string) (*models.CreativeTask, error)
 	return &task, nil
 }
 
+// StartCreativeGeneration 从已确认的文案启动创意生成
+func (s *CreativeService) StartCreativeGeneration(taskUUID string) error {
+	var task models.CreativeTask
+	if err := database.DB.Where("uuid = ?", taskUUID).First(&task).Error; err != nil {
+		return fmt.Errorf("task not found: %w", err)
+	}
+
+	if task.CTAText == "" || len(task.SellingPoints) == 0 {
+		return errors.New("task missing copywriting data")
+	}
+
+	if task.Status == models.TaskProcessing || task.Status == models.TaskQueued {
+		return nil
+	}
+
+	if err := database.DB.Model(&task).Updates(map[string]interface{}{
+		"status":   models.TaskQueued,
+		"progress": 5,
+	}).Error; err != nil {
+		return fmt.Errorf("update task status failed: %w", err)
+	}
+
+	go s.processTask(task.ID)
+
+	return nil
+}
+
 // ListAssetsQuery 查询参数
 type ListAssetsQuery struct {
 	Page     int    `json:"page"`
@@ -380,11 +423,15 @@ func (s *CreativeService) ListAllAssets(query ListAssetsQuery) ([]CreativeAssetD
 	creativeDatas := make([]CreativeAssetDTO, 0, len(assets))
 	for _, asset := range assets {
 		creativeData := CreativeAssetDTO{
-			ID:       asset.UUID,
-			Format:   asset.Format,
-			ImageURL: getPublicURL(&asset), // 优先使用公共URL
-			Width:    asset.Width,
-			Height:   asset.Height,
+			ID:            asset.UUID,
+			Format:        asset.Format,
+			ImageURL:      getPublicURL(&asset), // 优先使用公共URL
+			Width:         asset.Width,
+			Height:        asset.Height,
+			Title:         asset.Task.Title,
+			ProductName:   asset.Task.ProductName,
+			CTAText:       asset.Task.CTAText,
+			SellingPoints: asset.Task.SellingPoints,
 		}
 		creativeDatas = append(creativeDatas, creativeData)
 	}
@@ -394,11 +441,15 @@ func (s *CreativeService) ListAllAssets(query ListAssetsQuery) ([]CreativeAssetD
 
 // CreativeAssetDTO 素材数据传输对象
 type CreativeAssetDTO struct {
-	ID       string `json:"id"`
-	Format   string `json:"format"`
-	ImageURL string `json:"image_url"`
-	Width    int    `json:"width"`
-	Height   int    `json:"height"`
+	ID            string             `json:"id"`
+	Format        string             `json:"format"`
+	ImageURL      string             `json:"image_url"`
+	Width         int                `json:"width"`
+	Height        int                `json:"height"`
+	Title         string             `json:"title,omitempty"`
+	ProductName   string             `json:"product_name,omitempty"`
+	CTAText       string             `json:"cta_text,omitempty"`
+	SellingPoints models.StringArray `json:"selling_points,omitempty"`
 }
 
 // getPublicURL 获取公共访问URL
@@ -416,13 +467,17 @@ type ListTasksQuery struct {
 
 // TaskDTO 任务数据传输对象
 type TaskDTO struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Status      string `json:"status"`
-	Progress    int    `json:"progress"`
-	CreatedAt   string `json:"created_at"`
-	CompletedAt string `json:"completed_at,omitempty"`
-	ErrorMessage string `json:"error_message,omitempty"`
+	ID            string             `json:"id"`
+	Title         string             `json:"title"`
+	ProductName   string             `json:"product_name,omitempty"`
+	CTAText       string             `json:"cta_text,omitempty"`
+	SellingPoints models.StringArray `json:"selling_points,omitempty"`
+	Status        string             `json:"status"`
+	Progress      int                `json:"progress"`
+	CreatedAt     string             `json:"created_at"`
+	CompletedAt   string             `json:"completed_at,omitempty"`
+	ErrorMessage  string             `json:"error_message,omitempty"`
+	FirstImage    string             `json:"first_image,omitempty"`
 }
 
 // ListAllTasks 获取所有任务
@@ -431,11 +486,14 @@ func (s *CreativeService) ListAllTasks(query ListTasksQuery) ([]TaskDTO, int64, 
 	var total int64
 
 	// 构建查询
-	dbQuery := database.DB.Model(&models.CreativeTask{})
+	dbQuery := database.DB.Model(&models.CreativeTask{}).Preload("Assets")
 
 	// 应用筛选条件
 	if query.Status != "" {
 		dbQuery = dbQuery.Where("status = ?", query.Status)
+	} else {
+		// 默认不展示草稿
+		dbQuery = dbQuery.Where("status <> ?", models.TaskDraft)
 	}
 	if query.UserID > 0 {
 		dbQuery = dbQuery.Where("user_id = ?", query.UserID)
@@ -460,14 +518,25 @@ func (s *CreativeService) ListAllTasks(query ListTasksQuery) ([]TaskDTO, int64, 
 			completedAt = task.CompletedAt.Format("2006-01-02T15:04:05Z07:00")
 		}
 
+		firstImage := ""
+		if task.FirstAssetURL != "" {
+			firstImage = task.FirstAssetURL
+		} else if len(task.Assets) > 0 {
+			firstImage = getPublicURL(&task.Assets[0])
+		}
+
 		taskDTO := TaskDTO{
-			ID:           task.UUID,
-			Title:        task.Title,
-			Status:       string(task.Status),
-			Progress:     task.Progress,
-			CreatedAt:    task.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			CompletedAt:  completedAt,
-			ErrorMessage: task.ErrorMessage,
+			ID:            task.UUID,
+			Title:         task.Title,
+			ProductName:   task.ProductName,
+			CTAText:       task.CTAText,
+			SellingPoints: task.SellingPoints,
+			Status:        string(task.Status),
+			Progress:      task.Progress,
+			CreatedAt:     task.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			CompletedAt:   completedAt,
+			ErrorMessage:  task.ErrorMessage,
+			FirstImage:    firstImage,
 		}
 		taskDTOs = append(taskDTOs, taskDTO)
 	}

@@ -16,6 +16,7 @@ const (
 	TaskCompleted  TaskStatus = "completed"
 	TaskFailed     TaskStatus = "failed"
 	TaskCancelled  TaskStatus = "cancelled"
+	TaskDraft      TaskStatus = "draft"
 )
 
 // StringArray 字符串数组类型（用于 JSON 存储）
@@ -50,20 +51,29 @@ type CreativeTask struct {
 
 	// 输入信息
 	Title           string      `gorm:"type:varchar(255);not null" json:"title"`
+	ProductName     string      `gorm:"type:varchar(255)" json:"product_name,omitempty"`
 	SellingPoints   StringArray `gorm:"type:json" json:"selling_points"`
 	ProductImageURL string      `gorm:"type:varchar(512)" json:"product_image_url,omitempty"`
 	BrandLogoURL    string      `gorm:"type:varchar(512)" json:"brand_logo_url,omitempty"`
+	CopywritingRaw  string      `gorm:"type:text" json:"copywriting_raw,omitempty"`
+	PromptUsed      string      `gorm:"type:text" json:"prompt_used,omitempty"`
 
 	// 生成配置
-	RequestedFormats StringArray `gorm:"type:json" json:"requested_formats"`
-	RequestedStyles  StringArray `gorm:"type:json" json:"requested_styles"`
-	NumVariants      int         `gorm:"default:3" json:"num_variants"`
-	CTAText          string      `gorm:"type:varchar(64)" json:"cta_text,omitempty"`
+	RequestedFormats       StringArray `gorm:"type:json" json:"requested_formats"`
+	RequestedStyles        StringArray `gorm:"type:json" json:"requested_styles"`
+	NumVariants            int         `gorm:"default:3" json:"num_variants"`
+	CTAText                string      `gorm:"type:varchar(64)" json:"cta_text,omitempty"`
+	CTACandidates          StringArray `gorm:"type:json" json:"cta_candidates,omitempty"`
+	SellingPointCandidates StringArray `gorm:"type:json" json:"selling_point_candidates,omitempty"`
+	SelectedCTAIndex       *int        `json:"selected_cta_index,omitempty"`
+	SelectedSPIndexes      StringArray `gorm:"type:json" json:"selected_sp_indexes,omitempty"`
+	CopywritingGenerated   bool        `gorm:"default:false" json:"copywriting_generated"`
 
 	// 任务状态
-	Status       TaskStatus `gorm:"type:varchar(20);default:'pending';index" json:"status"`
-	Progress     int        `gorm:"default:0" json:"progress"` // 0-100
-	ErrorMessage string     `gorm:"type:text" json:"error_message,omitempty"`
+	Status        TaskStatus `gorm:"type:varchar(20);default:'pending';index" json:"status"`
+	Progress      int        `gorm:"default:0" json:"progress"` // 0-100
+	ErrorMessage  string     `gorm:"type:text" json:"error_message,omitempty"`
+	FirstAssetURL string     `gorm:"type:varchar(1024)" json:"first_asset_url,omitempty"`
 
 	// 时间统计
 	QueuedAt           *time.Time `json:"queued_at,omitempty"`
@@ -123,10 +133,14 @@ type CreativeAsset struct {
 	TaskID uint `gorm:"not null;index" json:"task_id"`
 
 	// 素材信息
-	Format   string `gorm:"type:varchar(20);not null;index" json:"format"`
-	Width    int    `gorm:"not null" json:"width"`
-	Height   int    `gorm:"not null" json:"height"`
-	FileSize *int   `json:"file_size,omitempty"`
+	Format        string      `gorm:"type:varchar(20);not null;index" json:"format"`
+	Width         int         `gorm:"not null" json:"width"`
+	Height        int         `gorm:"not null" json:"height"`
+	FileSize      *int        `json:"file_size,omitempty"`
+	Title         string      `gorm:"type:varchar(255)" json:"title,omitempty"`
+	ProductName   string      `gorm:"type:varchar(255)" json:"product_name,omitempty"`
+	CTAText       string      `gorm:"type:varchar(64)" json:"cta_text,omitempty"`
+	SellingPoints StringArray `gorm:"type:json" json:"selling_points,omitempty"`
 
 	// 存储信息
 	StorageType  StorageType `gorm:"type:varchar(20);default:'local';not null" json:"storage_type"`

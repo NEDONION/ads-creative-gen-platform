@@ -26,6 +26,10 @@ const Sidebar: React.FC = () => {
           <i className="fas fa-tasks"></i>
           <span>任务管理</span>
         </NavLink>
+        <NavLink to="/experiments" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <i className="fas fa-vial"></i>
+          <span>实验</span>
+        </NavLink>
       </nav>
     </div>
   );

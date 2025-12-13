@@ -85,6 +85,10 @@ func MigrateTables() {
 		&models.CreativeTask{},
 		&models.CreativeAsset{},  // 这个表包含我们修改的字段
 		&models.CreativeScore{},
+		// 实验相关表
+		&models.Experiment{},
+		&models.ExperimentVariant{},
+		&models.ExperimentMetric{},
 
 		// 关系表
 		&models.ProjectMember{},

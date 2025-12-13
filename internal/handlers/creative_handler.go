@@ -12,14 +12,36 @@ import (
 
 // CreativeHandler 创意处理器
 type CreativeHandler struct {
-	service *services.CreativeService
+	service            *services.CreativeService
+	copywritingService *services.CopywritingService
 }
 
 // NewCreativeHandler 创建处理器
 func NewCreativeHandler() *CreativeHandler {
 	return &CreativeHandler{
-		service: services.NewCreativeService(),
+		service:            services.NewCreativeService(),
+		copywritingService: services.NewCopywritingService(),
 	}
+}
+
+// GenerateCopywriting 生成文案候选
+func (h *CreativeHandler) GenerateCopywriting(c *gin.Context) {
+	var req GenerateCopywritingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Invalid request: "+err.Error()))
+		return
+	}
+
+	output, err := h.copywritingService.GenerateCopywriting(services.GenerateCopywritingInput{
+		UserID:      1, // TODO: 认证集成后替换
+		ProductName: req.ProductName,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse(500, "Failed to generate copywriting: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, SuccessResponse(output))
 }
 
 // Generate 创建创意生成任务
@@ -54,6 +76,73 @@ func (h *CreativeHandler) Generate(c *gin.Context) {
 	}))
 }
 
+// ConfirmCopywriting 确认文案选择
+func (h *CreativeHandler) ConfirmCopywriting(c *gin.Context) {
+	var req ConfirmCopywritingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Invalid request: "+err.Error()))
+		return
+	}
+
+	task, err := h.copywritingService.ConfirmCopywriting(services.ConfirmCopywritingInput{
+		TaskID:            req.TaskID,
+		SelectedCTAIndex:  req.SelectedCTAIndex,
+		SelectedSPIndexes: req.SelectedSPIndexes,
+		EditedCTA:         req.EditedCTA,
+		EditedSPs:         req.EditedSPs,
+		ProductImageURL:   req.ProductImageURL,
+		Style:             req.Style,
+		NumVariants:       req.NumVariants,
+		Formats:           req.Formats,
+	})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Failed to confirm copywriting: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, SuccessResponse(TaskData{
+		TaskID: task.UUID,
+		Status: string(task.Status),
+	}))
+}
+
+// StartCreative 从确认后的任务启动生成
+func (h *CreativeHandler) StartCreative(c *gin.Context) {
+	var req StartCreativeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Invalid request: "+err.Error()))
+		return
+	}
+
+	if err := h.service.StartCreativeGeneration(req.TaskID); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Failed to start creative generation: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, SuccessResponse(TaskData{
+		TaskID: req.TaskID,
+		Status: string(models.TaskQueued),
+	}))
+}
+
+// DeleteTask 删除任务及资产
+func (h *CreativeHandler) DeleteTask(c *gin.Context) {
+	taskID := c.Param("id")
+	if taskID == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse(400, "task_id is required"))
+		return
+	}
+
+	if err := h.service.DeleteTask(taskID); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Failed to delete task: "+err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, SuccessResponse(TaskData{
+		TaskID: taskID,
+		Status: "deleted",
+	}))
+}
+
 // GetTask 查询任务状态
 func (h *CreativeHandler) GetTask(c *gin.Context) {
 	taskID := c.Param("id")
@@ -67,10 +156,21 @@ func (h *CreativeHandler) GetTask(c *gin.Context) {
 
 	// 构建响应
 	data := TaskDetailData{
-		TaskID:   task.UUID,
-		Status:   string(task.Status),
-		Title:    task.Title,
-		Progress: task.Progress,
+		TaskID:           task.UUID,
+		Status:           string(task.Status),
+		Title:            task.Title,
+		ProductName:      task.ProductName,
+		Progress:         task.Progress,
+		SellingPoints:    task.SellingPoints,
+		ProductImageURL:  task.ProductImageURL,
+		RequestedFormats: task.RequestedFormats,
+		Style:            firstStyle(task.RequestedStyles),
+		CTAText:          task.CTAText,
+		NumVariants:      task.NumVariants,
+	}
+	data.CreatedAt = task.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
+	if task.CompletedAt != nil {
+		data.CompletedAt = task.CompletedAt.Format("2006-01-02T15:04:05Z07:00")
 	}
 
 	// 如果有错误信息
@@ -82,11 +182,15 @@ func (h *CreativeHandler) GetTask(c *gin.Context) {
 	creatives := make([]CreativeData, 0, len(task.Assets))
 	for _, asset := range task.Assets {
 		creatives = append(creatives, CreativeData{
-			ID:       asset.UUID,
-			Format:   asset.Format,
-			ImageURL: getPublicURL(&asset), // 使用统一的方法获取公共URL
-			Width:    asset.Width,
-			Height:   asset.Height,
+			ID:            asset.UUID,
+			Format:        asset.Format,
+			ImageURL:      getPublicURL(&asset), // 使用统一的方法获取公共URL
+			Width:         asset.Width,
+			Height:        asset.Height,
+			Title:         asset.Title,
+			ProductName:   asset.ProductName,
+			CTAText:       asset.CTAText,
+			SellingPoints: asset.SellingPoints,
 		})
 	}
 	data.Creatives = creatives
@@ -97,6 +201,13 @@ func (h *CreativeHandler) GetTask(c *gin.Context) {
 // getPublicURL 获取公共访问URL
 func getPublicURL(asset *models.CreativeAsset) string {
 	return asset.PublicURL
+}
+
+func firstStyle(styles models.StringArray) string {
+	if len(styles) > 0 {
+		return styles[0]
+	}
+	return ""
 }
 
 // ListAllAssets 获取所有创意素材

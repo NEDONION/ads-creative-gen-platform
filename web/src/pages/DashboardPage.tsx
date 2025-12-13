@@ -141,6 +141,10 @@ const DashboardPage: React.FC = () => {
             <i className="fas fa-tasks"></i>
             <span>任务管理</span>
           </a>
+          <a href="/experiments" className="nav-item">
+            <i className="fas fa-vial"></i>
+            <span>实验</span>
+          </a>
         </nav>
       </div>
 

@@ -1,0 +1,8 @@
+./batch.go
+./bucket.go
+./directory.go
+./lister.go
+./object.go
+./object_details.go
+./objects_manager.go
+./operations.go
