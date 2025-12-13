@@ -405,3 +405,72 @@ type CreativeAssetDTO struct {
 func getPublicURL(asset *models.CreativeAsset) string {
 	return asset.PublicURL
 }
+
+// ListTasksQuery 任务查询参数
+type ListTasksQuery struct {
+	Page     int    `json:"page"`
+	PageSize int    `json:"page_size"`
+	Status   string `json:"status"`
+	UserID   uint   `json:"user_id"`
+}
+
+// TaskDTO 任务数据传输对象
+type TaskDTO struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Status      string `json:"status"`
+	Progress    int    `json:"progress"`
+	CreatedAt   string `json:"created_at"`
+	CompletedAt string `json:"completed_at,omitempty"`
+	ErrorMessage string `json:"error_message,omitempty"`
+}
+
+// ListAllTasks 获取所有任务
+func (s *CreativeService) ListAllTasks(query ListTasksQuery) ([]TaskDTO, int64, error) {
+	var tasks []models.CreativeTask
+	var total int64
+
+	// 构建查询
+	dbQuery := database.DB.Model(&models.CreativeTask{})
+
+	// 应用筛选条件
+	if query.Status != "" {
+		dbQuery = dbQuery.Where("status = ?", query.Status)
+	}
+	if query.UserID > 0 {
+		dbQuery = dbQuery.Where("user_id = ?", query.UserID)
+	}
+
+	// 获取总数
+	if err := dbQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 分页查询
+	offset := (query.Page - 1) * query.PageSize
+	if err := dbQuery.Offset(offset).Limit(query.PageSize).Order("created_at DESC").Find(&tasks).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 转换为响应格式
+	taskDTOs := make([]TaskDTO, 0, len(tasks))
+	for _, task := range tasks {
+		completedAt := ""
+		if task.CompletedAt != nil {
+			completedAt = task.CompletedAt.Format("2006-01-02T15:04:05Z07:00")
+		}
+
+		taskDTO := TaskDTO{
+			ID:           task.UUID,
+			Title:        task.Title,
+			Status:       string(task.Status),
+			Progress:     task.Progress,
+			CreatedAt:    task.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			CompletedAt:  completedAt,
+			ErrorMessage: task.ErrorMessage,
+		}
+		taskDTOs = append(taskDTOs, taskDTO)
+	}
+
+	return taskDTOs, total, nil
+}

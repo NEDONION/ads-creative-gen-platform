@@ -144,3 +144,48 @@ func (h *CreativeHandler) ListAllAssets(c *gin.Context) {
 
 	c.JSON(http.StatusOK, SuccessResponse(responseData))
 }
+
+// ListAllTasks 获取所有任务
+func (h *CreativeHandler) ListAllTasks(c *gin.Context) {
+	// 获取查询参数
+	page := c.DefaultQuery("page", "1")
+	pageSize := c.DefaultQuery("page_size", "20")
+	status := c.Query("status")
+
+	// 转换分页参数
+	pageNum := 1
+	pageSizeNum := 20
+
+	if p, err := strconv.Atoi(page); err == nil && p > 0 {
+		pageNum = p
+	}
+	if ps, err := strconv.Atoi(pageSize); err == nil && ps > 0 && ps <= 100 {
+		pageSizeNum = ps
+	}
+
+	// 构建查询条件
+	query := services.ListTasksQuery{
+		Page:     pageNum,
+		PageSize: pageSizeNum,
+		Status:   status,
+		UserID:   0, // TODO: 从认证中获取
+	}
+
+	// 获取任务列表
+	tasks, total, err := h.service.ListAllTasks(query)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse(500, "Failed to fetch tasks: "+err.Error()))
+		return
+	}
+
+	// 构建响应数据
+	responseData := map[string]interface{}{
+		"tasks":       tasks,
+		"total":       total,
+		"page":        pageNum,
+		"page_size":   pageSizeNum,
+		"total_pages": int(math.Ceil(float64(total) / float64(pageSizeNum))),
+	}
+
+	c.JSON(http.StatusOK, SuccessResponse(responseData))
+}

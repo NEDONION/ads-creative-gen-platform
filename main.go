@@ -58,6 +58,9 @@ func main() {
 
 		// 获取所有创意素材接口
 		v1.GET("/creative/assets", creativeHandler.ListAllAssets)
+
+		// 获取所有任务接口
+		v1.GET("/creative/tasks", creativeHandler.ListAllTasks)
 	}
 
 	// 启动服务
