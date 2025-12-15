@@ -278,10 +278,18 @@ func (c *TongyiClient) QueryTask(ctx context.Context, traceID string, taskID str
 
 	var result ImageGenResponse
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		c.tracer.Step(ctx, "query_task", "tongyi-task", "failed", taskID, string(respBody), err.Error(), time.Now(), time.Now())
 		return nil, fmt.Errorf("unmarshal response failed: %w", err)
 	}
 
-	c.tracer.Step(ctx, "query_task", "tongyi-task", "success", taskID, result.Output.TaskStatus, "", time.Now(), time.Now())
+	if result.Output.TaskStatus == "SUCCEEDED" && len(result.Output.Results) > 0 {
+		urls := make([]string, 0, len(result.Output.Results))
+		for _, r := range result.Output.Results {
+			if r.URL != "" {
+				urls = append(urls, r.URL)
+			}
+		}
+		c.tracer.Step(ctx, "image_done", "tongyi-task", "success", taskID, strings.Join(urls, ","), "", time.Now(), time.Now())
+	}
+
 	return &result, nil
 }
