@@ -9,6 +9,7 @@
 *.dylib
 bin/
 dist/
+main
 
 # 测试覆盖率
 *.out

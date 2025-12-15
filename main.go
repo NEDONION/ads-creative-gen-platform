@@ -84,6 +84,16 @@ func main() {
 		v1.GET("/model_traces/:id", traceHandler.GetTrace)
 	}
 
+	// 静态文件服务 - 托管前端
+	r.Static("/assets", "./web/dist/assets")
+	r.StaticFile("/favicon.ico", "./web/dist/favicon.ico")
+	r.StaticFile("/vite.svg", "./web/dist/vite.svg")
+
+	// SPA fallback - 所有未匹配的路由返回 index.html（支持 React Router）
+	r.NoRoute(func(c *gin.Context) {
+		c.File("./web/dist/index.html")
+	})
+
 	// 启动服务
 	port := config.AppConfig.HttpPort
 	fmt.Printf("\n🚀 Server starting on %s\n", port)

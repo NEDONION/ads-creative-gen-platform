@@ -1,0 +1,47 @@
+services:
+  # Web Service
+  - type: web
+    name: ads-creative-gen-platform
+    runtime: go
+    plan: free
+    buildCommand: cd web && npm install && npm run build && cd .. && go build -o main .
+    startCommand: ./main
+    envVars:
+      - key: APP_MODE
+        value: release
+      - key: HTTP_PORT
+        value: :10000
+      - key: DB_TYPE
+        value: postgres
+      - key: DB_HOST
+        value: pgm-2ze312q98hvmgxjr7o.pg.rds.aliyuncs.com
+      - key: DB_PORT
+        value: 5432
+      - key: DB_USER
+        value: nedonion
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: ads_creative_gen_platform
+      - key: DB_CHARSET
+        value: utf8
+      - key: TONGYI_API_KEY
+        sync: false
+      - key: TONGYI_IMAGE_MODEL
+        value: wanx-v1
+      - key: TONGYI_LLM_MODEL
+        value: qwen-turbo
+      - key: QINIU_ACCESS_KEY
+        sync: false
+      - key: QINIU_SECRET_KEY
+        sync: false
+      - key: QINIU_BUCKET
+        value: ads-creative-gen-platform
+      - key: QINIU_DOMAIN
+        sync: false
+      - key: QINIU_PUBLIC_CLOUD_DOMAIN
+        sync: false
+      - key: QINIU_REGION
+        value: cn-south-1
+      - key: QINIU_BASE_PATH
+        value: s3/
