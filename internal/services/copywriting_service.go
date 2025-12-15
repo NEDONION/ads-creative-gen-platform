@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
+	"unicode"
 
 	"ads-creative-gen-platform/internal/models"
 	"ads-creative-gen-platform/pkg/database"
@@ -27,6 +29,7 @@ func NewCopywritingService() *CopywritingService {
 type GenerateCopywritingInput struct {
 	UserID      uint   `json:"user_id"`
 	ProductName string `json:"product_name"`
+	Language    string `json:"language,omitempty"`
 }
 
 // GenerateCopywritingOutput 文案生成输出
@@ -55,7 +58,9 @@ func (s *CopywritingService) GenerateCopywriting(input GenerateCopywritingInput)
 		return nil, errors.New("product_name is required")
 	}
 
-	result, err := s.qwenClient.GenerateCopywriting(input.ProductName)
+	targetLanguage := resolveLanguage(input.ProductName, input.Language)
+
+	result, err := s.qwenClient.GenerateCopywriting(input.ProductName, targetLanguage)
 	if err != nil {
 		return nil, err
 	}
@@ -75,6 +80,7 @@ func (s *CopywritingService) GenerateCopywriting(input GenerateCopywritingInput)
 		Status:                 models.TaskDraft,
 		CopywritingGenerated:   true,
 		CopywritingRaw:         result.RawResponse,
+		PromptUsed:             fmt.Sprintf("copywriting_language=%s", targetLanguage),
 	}
 
 	if err := database.DB.Create(&task).Error; err != nil {
@@ -163,4 +169,36 @@ func (s *CopywritingService) ConfirmCopywriting(input ConfirmCopywritingInput) (
 	}
 
 	return &task, nil
+}
+
+// resolveLanguage 决定生成语言（显式选择优先，其次自动检测）
+func resolveLanguage(productName, language string) string {
+	lang := strings.ToLower(strings.TrimSpace(language))
+	if lang == "zh" || lang == "en" {
+		return lang
+	}
+
+	// 简单检测：存在中文字符则用中文，否则英文
+	hasHan := false
+	alphaCount := 0
+	hanCount := 0
+	for _, r := range productName {
+		if unicode.Is(unicode.Han, r) {
+			hasHan = true
+			hanCount++
+		} else if unicode.IsLetter(r) {
+			alphaCount++
+		}
+	}
+
+	if hasHan && hanCount >= alphaCount {
+		return "zh"
+	}
+
+	if alphaCount > 0 {
+		return "en"
+	}
+
+	// 默认中文
+	return "zh"
 }

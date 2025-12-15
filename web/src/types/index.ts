@@ -52,8 +52,11 @@ export interface GenerateRequest {
 }
 
 // 文案生成与确认
+export type LanguageOption = 'auto' | 'zh' | 'en';
+
 export interface GenerateCopywritingRequest {
   product_name: string;
+  language?: LanguageOption;
 }
 
 export interface CopywritingCandidates {

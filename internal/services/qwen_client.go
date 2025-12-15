@@ -71,18 +71,23 @@ type CopywritingResult struct {
 }
 
 // GenerateCopywriting 调用 LLM 生成文案
-func (c *QwenClient) GenerateCopywriting(productName string) (*CopywritingResult, error) {
+func (c *QwenClient) GenerateCopywriting(productName string, language string) (*CopywritingResult, error) {
 	if productName == "" {
 		return nil, errors.New("product name is required")
 	}
 
+	lang := strings.ToLower(strings.TrimSpace(language))
+	if lang != "en" {
+		lang = "zh"
+	}
+
 	ctx := context.Background()
-	ctx, _ = c.tracer.Start(ctx, "qwen-llm", c.model, productName, productName)
+	ctx, _ = c.tracer.Start(ctx, "qwen-llm", c.model, productName, fmt.Sprintf("%s|%s", productName, lang))
 
 	req := CopywritingRequest{
 		Model: c.model,
 		Input: CopywritingInput{
-			Prompt: c.buildPrompt(productName),
+			Prompt: c.buildPrompt(productName, lang),
 		},
 	}
 
@@ -140,22 +145,31 @@ func (c *QwenClient) GenerateCopywriting(productName string) (*CopywritingResult
 }
 
 // buildPrompt 构造提示词
-func (c *QwenClient) buildPrompt(productName string) string {
-	return fmt.Sprintf(`生成产品广告文案: "%s"
+func (c *QwenClient) buildPrompt(productName, language string) string {
+	langName := "中文"
+	ctaRule := "- 生成恰好2个CTA (Call-to-Action) 选项，使用中文，长度 3-6 个汉字，行动导向（如：\"立即购买\"、\"马上抢购\"、\"了解更多\"）"
+	spRule := "- 生成恰好3个核心卖点选项，使用中文，长度 8-15 个汉字，突出产品核心优势"
 
-请提供以下JSON格式的输出:
+	if language == "en" {
+		langName = "English"
+		ctaRule = "- Generate exactly 2 CTA (Call-to-Action) options in English, concise and action-oriented (3-7 words, e.g., \"Buy now\", \"Shop today\", \"Learn more\")"
+		spRule = "- Generate exactly 3 key selling points in English (6-12 words), focus on product benefits and clarity"
+	}
+
+	return fmt.Sprintf(`Generate ad copy for product: "%s"
+
+Return ONLY valid JSON in the following shape:
 {
   "cta_options": ["CTA option 1", "CTA option 2"],
   "selling_point_options": ["Selling point 1", "Selling point 2", "Selling point 3"]
 }
 
-要求:
-- 生成恰好2个CTA (Call-to-Action) 选项，使用中文
-- 生成恰好3个核心卖点选项，使用中文
-- CTA应简短有力（3-6个汉字），行动导向（例如: "立即购买", "马上抢购", "了解更多"）
-- 卖点应简洁明了（8-15个汉字），突出产品核心优势
-- 所有文本必须使用中文
-- 只返回有效的JSON格式，不要包含其他文本`, productName)
+Rules:
+- Language: %s
+%s
+%s
+- Do not translate user input; keep the same language across CTA and selling points
+- Strictly output JSON only, no extra text`, productName, langName, ctaRule, spRule)
 }
 
 // parseResponse 解析并校验

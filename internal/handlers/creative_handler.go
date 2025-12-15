@@ -35,6 +35,7 @@ func (h *CreativeHandler) GenerateCopywriting(c *gin.Context) {
 	output, err := h.copywritingService.GenerateCopywriting(services.GenerateCopywritingInput{
 		UserID:      1, // TODO: 认证集成后替换
 		ProductName: req.ProductName,
+		Language:    req.Language,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse(500, "Failed to generate copywriting: "+err.Error()))

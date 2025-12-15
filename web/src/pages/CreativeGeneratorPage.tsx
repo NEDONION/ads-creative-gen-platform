@@ -7,6 +7,7 @@ import type {
   CopywritingCandidates,
   GenerateCopywritingRequest,
   GenerateRequest,
+  LanguageOption,
 } from '../types';
 
 enum WorkflowStep {
@@ -24,6 +25,7 @@ const CreativeGeneratorPage: React.FC = () => {
   // Step1
   const [productName, setProductName] = useState('');
   const [generatingCopywriting, setGeneratingCopywriting] = useState(false);
+  const [language, setLanguage] = useState<LanguageOption>('auto');
 
   // Step2
   const [candidates, setCandidates] = useState<CopywritingCandidates | null>(null);
@@ -51,7 +53,7 @@ const CreativeGeneratorPage: React.FC = () => {
     if (!canProceedToCopywriting) return;
     setGeneratingCopywriting(true);
     try {
-      const req: GenerateCopywritingRequest = { product_name: productName.trim() };
+      const req: GenerateCopywritingRequest = { product_name: productName.trim(), language };
       const res = await creativeAPI.generateCopywriting(req);
       if (res.code === 0 && res.data) {
         setCandidates(res.data);
@@ -206,6 +208,23 @@ const CreativeGeneratorPage: React.FC = () => {
                         placeholder="如：智能手表 Pro"
                         required
                       />
+                    </div>
+                    <div className="compact-form-group">
+                      <label className="compact-label">
+                        <span className="label-text">输出语言</span>
+                      </label>
+                      <select
+                        className="compact-input"
+                        value={language}
+                        onChange={(e) => setLanguage(e.target.value as LanguageOption)}
+                      >
+                        <option value="auto">自动检测</option>
+                        <option value="zh">中文</option>
+                        <option value="en">English</option>
+                      </select>
+                      <div className="compact-card-hint" style={{ marginTop: 4 }}>
+                        默认自动：根据商品名称检测中英文，可手动覆盖
+                      </div>
                     </div>
                     <div className="compact-form-actions">
                       <button type="submit" className="compact-btn compact-btn-primary" disabled={!canProceedToCopywriting || generatingCopywriting}>

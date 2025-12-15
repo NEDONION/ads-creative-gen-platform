@@ -26,6 +26,7 @@ type GenerateResponse struct {
 // GenerateCopywritingRequest 文案生成请求
 type GenerateCopywritingRequest struct {
 	ProductName string `json:"product_name" binding:"required"`
+	Language    string `json:"language,omitempty"`
 }
 
 // ConfirmCopywritingRequest 文案确认请求
@@ -48,8 +49,8 @@ type StartCreativeRequest struct {
 
 // Experiment DTOs
 type CreateExperimentRequest struct {
-	Name        string                         `json:"name" binding:"required"`
-	ProductName string                         `json:"product_name"`
+	Name        string                            `json:"name" binding:"required"`
+	ProductName string                            `json:"product_name"`
 	Variants    []services.ExperimentVariantInput `json:"variants" binding:"required"`
 }
 
@@ -88,16 +89,16 @@ type TaskDetailData struct {
 
 // CreativeData 创意数据
 type CreativeData struct {
-	ID       string  `json:"id"`
-	Format   string  `json:"format"`
-	ImageURL string  `json:"image_url"`
-	Width    int     `json:"width"`
-	Height   int     `json:"height"`
-	Score    float64 `json:"score,omitempty"`
-	Rank     int     `json:"rank,omitempty"`
-	Title       string   `json:"title,omitempty"`
-	ProductName string   `json:"product_name,omitempty"`
-	CTAText     string   `json:"cta_text,omitempty"`
+	ID            string   `json:"id"`
+	Format        string   `json:"format"`
+	ImageURL      string   `json:"image_url"`
+	Width         int      `json:"width"`
+	Height        int      `json:"height"`
+	Score         float64  `json:"score,omitempty"`
+	Rank          int      `json:"rank,omitempty"`
+	Title         string   `json:"title,omitempty"`
+	ProductName   string   `json:"product_name,omitempty"`
+	CTAText       string   `json:"cta_text,omitempty"`
 	SellingPoints []string `json:"selling_points,omitempty"`
 }
 
