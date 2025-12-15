@@ -94,6 +94,7 @@ func main() {
 	r.Static("/assets", "./web/dist/assets")
 	r.StaticFile("/favicon.ico", "./web/dist/favicon.ico")
 	r.StaticFile("/vite.svg", "./web/dist/vite.svg")
+	r.StaticFile("/experiment-widget.js", "./web/dist/experiment-widget.js")
 
 	// SPA fallback - 所有未匹配的路由返回 index.html（支持 React Router）
 	r.NoRoute(func(c *gin.Context) {
