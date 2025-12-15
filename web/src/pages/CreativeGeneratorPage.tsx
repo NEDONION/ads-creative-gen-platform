@@ -8,6 +8,7 @@ import type {
   GenerateCopywritingRequest,
   GenerateRequest,
   LanguageOption,
+  VariantConfig,
 } from '../types';
 
 enum WorkflowStep {
@@ -44,6 +45,7 @@ const CreativeGeneratorPage: React.FC = () => {
     cta_text: '',
     num_variants: 2,
   });
+  const [variantConfigs, setVariantConfigs] = useState<VariantConfig[]>([{ style: '', prompt: '' }, { style: '', prompt: '' }]);
   const [submitting, setSubmitting] = useState(false);
 
   const canProceedToCopywriting = useMemo(() => productName.trim().length > 0, [productName]);
@@ -115,7 +117,17 @@ const CreativeGeneratorPage: React.FC = () => {
     }
     setSubmitting(true);
     try {
-      const res = await creativeAPI.startCreative({ task_id: candidates.task_id });
+      const res = await creativeAPI.startCreative({
+        task_id: candidates.task_id,
+        product_image_url: formData.product_image_url || undefined,
+        style: formData.style || undefined,
+        num_variants: formData.num_variants,
+        formats: formData.requested_formats,
+        variant_configs: variantConfigs.map((cfg) => ({
+          style: cfg.style || undefined,
+          prompt: cfg.prompt || undefined,
+        })),
+      });
       if (res.code === 0 && res.data) {
         alert(`创意生成已开始！任务ID: ${res.data.task_id}`);
         navigate('/tasks');
@@ -152,7 +164,16 @@ const CreativeGeneratorPage: React.FC = () => {
       cta_text: '',
       num_variants: 2,
     });
+    setVariantConfigs([{ style: '', prompt: '' }, { style: '', prompt: '' }]);
     setCurrentStep(WorkflowStep.PRODUCT_INPUT);
+  };
+
+  const ensureVariantConfigs = (count: number) => {
+    setVariantConfigs((prev) => {
+      if (count <= prev.length) return prev.slice(0, count);
+      const extra = Array.from({ length: count - prev.length }, () => ({ style: '', prompt: '' }));
+      return [...prev, ...extra];
+    });
   };
 
   const renderStepIndicator = () => (
@@ -347,7 +368,11 @@ const CreativeGeneratorPage: React.FC = () => {
                           type="number"
                           className="compact-input"
                           value={formData.num_variants}
-                          onChange={(e) => setFormData({ ...formData, num_variants: parseInt(e.target.value) || 3 })}
+                          onChange={(e) => {
+                            const next = Math.max(1, parseInt(e.target.value) || 1);
+                            setFormData({ ...formData, num_variants: next });
+                            ensureVariantConfigs(next);
+                          }}
                           min={1}
                           max={10}
                         />
@@ -386,6 +411,60 @@ const CreativeGeneratorPage: React.FC = () => {
                           placeholder="例如: 1:1,9:16"
                         />
                       </div>
+                    </div>
+
+                    <div className="compact-section-title">变体配置（每张图自定义风格/提示词）</div>
+                    <div className="compact-form-grid">
+                      {variantConfigs.map((cfg, idx) => (
+                        <div key={idx} className="compact-card" style={{ padding: '12px' }}>
+                          <div className="compact-card-header" style={{ padding: 0, marginBottom: 8 }}>
+                            <h4 className="compact-card-title" style={{ fontSize: 14 }}>
+                              变体 {idx + 1}
+                            </h4>
+                          </div>
+                          <div className="compact-form-group">
+                            <label className="compact-label">
+                              <span className="label-text">风格</span>
+                            </label>
+                            <select
+                              className="compact-input"
+                              value={cfg.style || ''}
+                              onChange={(e) =>
+                                setVariantConfigs((prev) => {
+                                  const next = [...prev];
+                                  next[idx] = { ...next[idx], style: e.target.value };
+                                  return next;
+                                })
+                              }
+                            >
+                              <option value="">沿用全局风格</option>
+                              <option value="bright">明亮</option>
+                              <option value="professional">专业</option>
+                              <option value="modern">现代</option>
+                              <option value="elegant">优雅</option>
+                              <option value="vibrant">活力</option>
+                            </select>
+                          </div>
+                          <div className="compact-form-group">
+                            <label className="compact-label">
+                              <span className="label-text">自定义提示词</span>
+                            </label>
+                            <textarea
+                              className="compact-textarea"
+                              rows={2}
+                              placeholder="可为空，留空则按 CTA/卖点自动拼提示词"
+                              value={cfg.prompt || ''}
+                              onChange={(e) =>
+                                setVariantConfigs((prev) => {
+                                  const next = [...prev];
+                                  next[idx] = { ...next[idx], prompt: e.target.value };
+                                  return next;
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="compact-form-actions">

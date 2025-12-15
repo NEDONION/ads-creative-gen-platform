@@ -115,7 +115,18 @@ func (h *CreativeHandler) StartCreative(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.StartCreativeGeneration(req.TaskID); err != nil {
+	opts := &services.StartCreativeOptions{
+		ProductImageURL: req.ProductImageURL,
+		Style:           req.Style,
+		NumVariants:     req.NumVariants,
+		Formats:         req.Formats,
+	}
+	for _, cfg := range req.VariantConfigs {
+		opts.VariantPrompts = append(opts.VariantPrompts, cfg.Prompt)
+		opts.VariantStyles = append(opts.VariantStyles, cfg.Style)
+	}
+
+	if err := h.service.StartCreativeGeneration(req.TaskID, opts); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Failed to start creative generation: "+err.Error()))
 		return
 	}

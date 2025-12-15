@@ -44,7 +44,18 @@ type ConfirmCopywritingRequest struct {
 
 // StartCreativeRequest 启动创意生成请求
 type StartCreativeRequest struct {
-	TaskID string `json:"task_id" binding:"required"`
+	TaskID          string              `json:"task_id" binding:"required"`
+	ProductImageURL string              `json:"product_image_url,omitempty"`
+	Style           string              `json:"style,omitempty"`
+	NumVariants     int                 `json:"num_variants,omitempty"`
+	Formats         []string            `json:"formats,omitempty"`
+	VariantConfigs  []TaskVariantConfig `json:"variant_configs,omitempty"`
+}
+
+// TaskVariantConfig 单个变体配置
+type TaskVariantConfig struct {
+	Style  string `json:"style,omitempty"`
+	Prompt string `json:"prompt,omitempty"`
 }
 
 // Experiment DTOs

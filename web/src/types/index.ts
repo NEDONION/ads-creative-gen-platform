@@ -59,6 +59,11 @@ export interface GenerateCopywritingRequest {
   language?: LanguageOption;
 }
 
+export interface VariantConfig {
+  style?: string;
+  prompt?: string;
+}
+
 export interface CopywritingCandidates {
   task_id: string;
   cta_candidates: string[];
@@ -75,10 +80,16 @@ export interface ConfirmCopywritingRequest {
   style?: string;
   num_variants?: number;
   formats?: string[];
+  variant_configs?: VariantConfig[];
 }
 
 export interface StartCreativeRequest {
   task_id: string;
+  product_image_url?: string;
+  style?: string;
+  num_variants?: number;
+  formats?: string[];
+  variant_configs?: VariantConfig[];
 }
 
 export interface AssetData {
