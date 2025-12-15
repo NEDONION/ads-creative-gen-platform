@@ -264,27 +264,28 @@ const ExperimentsPage: React.FC = () => {
                 )}
               </div>
               {selectedExp && (
-                <div className="compact-card section-card section-detail" style={{ marginTop: 12, borderColor: '#e6f0ff' }}>
+                <div className="compact-card section-card section-detail" style={{ marginTop: 16, borderColor: '#e6f0ff', boxShadow: '0 8px 18px rgba(0,0,0,0.05)' }}>
                   <div className="compact-card-header" style={{ alignItems: 'flex-start' }}>
                     <div>
                       <h3 className="compact-card-title">实验详情</h3>
                       <div className="compact-card-hint">时长 / 定义 / 变体素材</div>
                     </div>
                     <div className="compact-card-actions" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      {selectedExp.status !== 'archived' && (
-                        <>
-                          <button className="compact-btn compact-btn-primary compact-btn-xs" onClick={() => handleActivate(selectedExp.experiment_id)}>
-                            激活
-                          </button>
-                          <button
-                            className="compact-btn compact-btn-danger compact-btn-xs"
-                            style={{ marginLeft: 'auto' }}
-                            onClick={() => handleStop(selectedExp.experiment_id)}
-                          >
-                            停止
-                          </button>
-                        </>
-                      )}
+                      <button
+                        className="compact-btn compact-btn-primary compact-btn-xs"
+                        onClick={() => handleActivate(selectedExp.experiment_id)}
+                        disabled={selectedExp.status === 'active'}
+                      >
+                        {selectedExp.status === 'active' ? '已激活' : '激活'}
+                      </button>
+                      <button
+                        className="compact-btn compact-btn-danger compact-btn-xs"
+                        style={{ marginLeft: 'auto' }}
+                        onClick={() => handleStop(selectedExp.experiment_id)}
+                        disabled={selectedExp.status === 'archived'}
+                      >
+                        {selectedExp.status === 'archived' ? '已停止' : '停止'}
+                      </button>
                       <button className="compact-btn compact-btn-outline compact-btn-xs" onClick={() => loadMetrics(selectedExp.experiment_id)}>
                         刷新指标
                       </button>
@@ -294,35 +295,35 @@ const ExperimentsPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="compact-card-body">
-                    <div className="compact-form-grid fancy-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
-                      <div className="compact-form-group">
-                        <label className="compact-label">实验ID</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <code style={{ fontSize: 12 }}>{selectedExp.experiment_id}</code>
+                    <div className="detail-meta-grid">
+                      <div className="meta-block wide">
+                        <div className="meta-label">实验ID</div>
+                        <div className="meta-value code">
+                          <code>{selectedExp.experiment_id}</code>
                           <button className="compact-btn compact-btn-outline compact-btn-xs" onClick={() => copyToClipboard(selectedExp.experiment_id)}>
                             复制
                           </button>
                         </div>
                       </div>
-                      <div className="compact-form-group">
-                        <label className="compact-label">状态</label>
-                        <div><span className={`status-badge status-${selectedExp.status}`}>{selectedExp.status}</span></div>
+                      <div className="meta-block">
+                        <div className="meta-label">状态</div>
+                        <div className="meta-value"><span className={`status-badge status-${selectedExp.status}`}>{selectedExp.status}</span></div>
                       </div>
-                      <div className="compact-form-group">
-                        <label className="compact-label">时长</label>
-                        <div>{formatDuration(selectedExp.start_at || selectedExp.created_at, selectedExp.end_at)}</div>
+                      <div className="meta-block">
+                        <div className="meta-label">时长</div>
+                        <div className="meta-value">{formatDuration(selectedExp.start_at || selectedExp.created_at, selectedExp.end_at)}</div>
                       </div>
-                      <div className="compact-form-group">
-                        <label className="compact-label">创建</label>
-                        <div>{formatTime(selectedExp.created_at)}</div>
+                      <div className="meta-block">
+                        <div className="meta-label">创建</div>
+                        <div className="meta-value">{formatTime(selectedExp.created_at)}</div>
                       </div>
-                      <div className="compact-form-group">
-                        <label className="compact-label">开始</label>
-                        <div>{formatTime(selectedExp.start_at)}</div>
+                      <div className="meta-block">
+                        <div className="meta-label">开始</div>
+                        <div className="meta-value">{formatTime(selectedExp.start_at)}</div>
                       </div>
-                      <div className="compact-form-group">
-                        <label className="compact-label">结束</label>
-                        <div>{formatTime(selectedExp.end_at)}</div>
+                      <div className="meta-block">
+                        <div className="meta-label">结束</div>
+                        <div className="meta-value">{formatTime(selectedExp.end_at)}</div>
                       </div>
                     </div>
 

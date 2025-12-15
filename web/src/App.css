@@ -1330,6 +1330,50 @@ textarea.form-control {
   font-size: 12px;
 }
 
+.detail-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.meta-block {
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meta-block.wide {
+  grid-column: span 2;
+}
+
+.meta-label {
+  font-size: 12px;
+  color: #8c8c8c;
+  letter-spacing: 0.3px;
+}
+
+.meta-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.meta-value.code code {
+  font-family: monospace;
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #666;
+}
+
 .compact-asset-meta {
   display: flex;
   align-items: center;
@@ -1750,6 +1794,126 @@ textarea.form-control {
   flex-direction: column;
   gap: 10px;
   border-top: 1px solid #e6eaf0;
+}
+
+/* Generator layout */
+.generator-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.generator-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 0.9fr);
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.generator-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.generator-aside {
+  position: sticky;
+  top: 24px;
+}
+
+.summary-card {
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.summary-title {
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.summary-step {
+  font-size: 12px;
+  color: #8c8c8c;
+  background: #f5f5f5;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.summary-item {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 6px;
+  font-size: 13px;
+  color: #333;
+  align-items: center;
+}
+
+.summary-item .label {
+  color: #8c8c8c;
+}
+
+.summary-item .value {
+  line-height: 1.5;
+}
+
+.summary-tag {
+  background: #f0f5ff;
+  color: #1d39c4;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
+.tag-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.step-mini {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.step-mini .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e5e7eb;
+}
+
+.step-mini .dot.active {
+  background: #1677ff;
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1024px) {
+  .generator-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .generator-aside {
+    position: static;
+  }
 }
 
 /* Experiment page accents */

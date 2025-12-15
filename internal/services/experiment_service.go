@@ -176,11 +176,17 @@ func (s *ExperimentService) UpdateStatus(expUUID string, status models.Experimen
 	if status != models.ExpActive && status != models.ExpPaused && status != models.ExpArchived && status != models.ExpDraft {
 		return errors.New("invalid status")
 	}
-	return database.DB.Model(&models.Experiment{}).Where("uuid = ?", expUUID).
-		Updates(map[string]interface{}{
-			"status":   status,
-			"start_at": time.Now(),
-		}).Error
+	update := map[string]interface{}{
+		"status": status,
+	}
+	now := time.Now()
+	if status == models.ExpActive {
+		update["start_at"] = now
+	}
+	if status == models.ExpArchived {
+		update["end_at"] = now
+	}
+	return database.DB.Model(&models.Experiment{}).Where("uuid = ?", expUUID).Updates(update).Error
 }
 
 // Assign 分流（返回变体与创意信息）

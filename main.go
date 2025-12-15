@@ -6,6 +6,8 @@ import (
 	"ads-creative-gen-platform/internal/middleware"
 	"ads-creative-gen-platform/pkg/database"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,8 +16,13 @@ func main() {
 	// 加载配置
 	config.LoadConfig()
 
-	// 初始化数据库并自动迁移
-	database.InitializeDatabase()
+	// 初始化数据库，并按开关决定是否迁移
+	autoMigrate := strings.ToLower(strings.TrimSpace(os.Getenv("AUTO_MIGRATE"))) == "true"
+	if autoMigrate {
+		database.InitializeDatabase()
+	} else {
+		database.InitDatabase()
+	}
 	defer database.CloseDB()
 
 	// 设置 Gin 模式
