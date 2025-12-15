@@ -40,7 +40,32 @@ const Sidebar: React.FC = () => {
           <i className="fas fa-project-diagram"></i>
           <span>{t('navTraces')}</span>
         </NavLink>
+        <NavLink to="/plugin-preview" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <i className="fas fa-flask"></i>
+          <span>{t('previewPlugin')}</span>
+        </NavLink>
       </nav>
+
+      <div className="sidebar-footer">
+        <div className="footer-section">
+          <div className="footer-title">
+            <i className="fas fa-link"></i>
+            <span>{t('resourcesTitle')}</span>
+          </div>
+          <div className="footer-links">
+            <a href="https://www.jchu.me" target="_blank" rel="noopener noreferrer" className="footer-link">
+              <i className="fas fa-globe"></i>
+              <span>{t('personalWebsite')}</span>
+              <i className="fas fa-external-link-alt" style={{ fontSize: '10px', marginLeft: 'auto' }}></i>
+            </a>
+            <a href="https://github.com/NEDONION/experiment-widget-sdk" target="_blank" rel="noopener noreferrer" className="footer-link">
+              <i className="fab fa-github"></i>
+              <span>{t('githubRepo')}</span>
+              <i className="fas fa-external-link-alt" style={{ fontSize: '10px', marginLeft: 'auto' }}></i>
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

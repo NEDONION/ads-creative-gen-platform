@@ -7,6 +7,7 @@ import CreativeGeneratorPage from './pages/CreativeGeneratorPage';
 import ExperimentsPage from './pages/ExperimentsPage';
 import ExperimentCreatePage from './pages/ExperimentCreatePage';
 import TracePage from './pages/TracePage';
+import PluginPreviewPage from './pages/PluginPreviewPage';
 import { I18nProvider } from './i18n';
 
 const App: React.FC = () => {
@@ -21,6 +22,7 @@ const App: React.FC = () => {
           <Route path="/experiments" element={<ExperimentsPage />} />
           <Route path="/experiments/new" element={<ExperimentCreatePage />} />
           <Route path="/traces" element={<TracePage />} />
+          <Route path="/plugin-preview" element={<PluginPreviewPage />} />
         </Routes>
       </Router>
     </I18nProvider>
