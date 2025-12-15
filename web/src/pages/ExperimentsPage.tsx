@@ -187,13 +187,13 @@ const ExperimentsPage: React.FC = () => {
   const updateVariant = (idx: number, field: keyof ExperimentVariantInput, value: number | string) => {
     setVariants((prev) => {
       const copy = [...prev];
-      copy[idx] = { ...copy[idx], [field]: value };
+      copy[idx] = { ...copy[idx], [field]: value } as ExperimentVariantInput;
       return copy;
     });
   };
 
   const addVariant = () => {
-    setVariants((prev) => [...prev, { creative_id: '', weight: 0.1 }]);
+    setVariants((prev) => [...prev, { creative_id: '', weight: 0.1, cta_text: '', selling_points: [] }]);
   };
 
   const removeVariant = (idx: number) => {
@@ -291,7 +291,7 @@ const ExperimentsPage: React.FC = () => {
               </div>
             )}
 
-            <div className="compact-card gradient-card">
+            <div className="compact-card gradient-card section-card section-list">
               <div className="compact-card-header">
                 <div>
                   <h3 className="compact-card-title">实验列表</h3>
@@ -352,7 +352,7 @@ const ExperimentsPage: React.FC = () => {
                 )}
               </div>
               {selectedExp && (
-                <div className="compact-card" style={{ marginTop: 12, borderColor: '#e6f0ff' }}>
+                <div className="compact-card section-card section-detail" style={{ marginTop: 12, borderColor: '#e6f0ff' }}>
                   <div className="compact-card-header" style={{ alignItems: 'flex-start' }}>
                     <div>
                       <h3 className="compact-card-title">实验详情</h3>
@@ -424,6 +424,8 @@ const ExperimentsPage: React.FC = () => {
                           cta_text: v.cta_text,
                           selling_points: v.selling_points,
                         };
+                        const appliedCTA = v.cta_text || info?.cta_text;
+                        const appliedSP = v.selling_points && v.selling_points.length > 0 ? v.selling_points : info?.selling_points;
                         return (
                           <div key={idx} className="compact-card" style={{ padding: 10, border: '1px solid #f0f0f0' }}>
                             <div style={{ display: 'flex', gap: 10 }}>
@@ -439,14 +441,14 @@ const ExperimentsPage: React.FC = () => {
                                 <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>
                                   创意ID: {v.creative_id} | 权重: {v.weight}
                                 </div>
-                                {info?.selling_points && info.selling_points.length > 0 && (
+                                {appliedSP && appliedSP.length > 0 && (
                                   <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                                    卖点：{info.selling_points.slice(0, 2).join(' / ')}
+                                    卖点：{appliedSP.slice(0, 2).join(' / ')}
                                   </div>
                                 )}
-                                {info?.cta_text && (
+                                {appliedCTA && (
                                   <div style={{ fontSize: 12, color: '#111', marginTop: 4 }}>
-                                    CTA：{info.cta_text}
+                                    CTA：{appliedCTA}
                                   </div>
                                 )}
                               </div>
@@ -488,7 +490,7 @@ const ExperimentsPage: React.FC = () => {
               )}
             </div>
 
-            <div className="compact-card">
+            <div className="compact-card section-card section-create">
               <div className="compact-card-header">
                 <h3 className="compact-card-title">创建实验</h3>
                 <div className="compact-card-hint">配置变体和权重，创建后再激活</div>
@@ -564,6 +566,93 @@ const ExperimentsPage: React.FC = () => {
                           onChange={(e) => updateVariant(idx, 'weight', parseFloat(e.target.value) || 0)}
                         />
                       </div>
+                      <div className="compact-form-group">
+                        <label className="compact-label">CTA（选择或覆盖）</label>
+                        {(() => {
+                          const info = getCreativeInfo(v.creative_id) || {};
+                          const creativeCTA = info.cta_text || '';
+                          const selectedCTA = (v as any).cta_text || '';
+                          const options = [
+                            { value: '', label: '使用创意默认' },
+                          ];
+                          if (creativeCTA) {
+                            options.push({ value: creativeCTA, label: `创意：${creativeCTA}` });
+                          }
+                          if (selectedCTA && selectedCTA !== creativeCTA) {
+                            options.push({ value: selectedCTA, label: `当前覆盖：${selectedCTA}` });
+                          }
+                          return (
+                            <>
+                              <select
+                                className="compact-input"
+                                value={selectedCTA}
+                                onChange={(e) => updateVariant(idx, 'cta_text' as keyof ExperimentVariantInput, e.target.value)}
+                              >
+                                {options.map((opt) => (
+                                  <option key={opt.value || 'default'} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                className="compact-input"
+                                style={{ marginTop: 6 }}
+                                type="text"
+                                placeholder="手动输入覆盖 CTA"
+                                value={selectedCTA}
+                                onChange={(e) => updateVariant(idx, 'cta_text' as keyof ExperimentVariantInput, e.target.value)}
+                              />
+                            </>
+                          );
+                        })()}
+                      </div>
+                      <div className="compact-form-group">
+                        <label className="compact-label">卖点选择（可多选）</label>
+                        {(() => {
+                          const info = getCreativeInfo(v.creative_id) || {};
+                          const spOptions = Array.isArray(info.selling_points) ? info.selling_points : [];
+                          const selectedSP: string[] = Array.isArray((v as any).selling_points) ? ((v as any).selling_points as any) : [];
+                          const toggleSP = (sp: string) => {
+                            const next = selectedSP.includes(sp) ? selectedSP.filter((s) => s !== sp) : [...selectedSP, sp];
+                            updateVariant(idx, 'selling_points' as keyof ExperimentVariantInput, next);
+                          };
+                          return spOptions.length > 0 ? (
+                            <div className="option-grid">
+                              {spOptions.map((sp) => (
+                                <label key={sp} className={`checkbox-option ${selectedSP.includes(sp) ? 'active' : ''}`}>
+                                  <input type="checkbox" checked={selectedSP.includes(sp)} onChange={() => toggleSP(sp)} />
+                                  <span className="checkbox-label">{sp}</span>
+                                </label>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{ color: '#999', fontSize: 12 }}>该创意暂无卖点，可在创意生成时补充</div>
+                          );
+                        })()}
+                      </div>
+                      {v.creative_id && (
+                        <div className="compact-form-group">
+                          <label className="compact-label">当前创意文案（回填自生成时）</label>
+                          <div style={{ background: '#fafafa', border: '1px solid #eee', borderRadius: 6, padding: 8, fontSize: 12, color: '#555' }}>
+                            {getCreativeInfo(v.creative_id)?.cta_text ? (
+                              <div style={{ marginBottom: 4 }}>
+                                <strong>CTA：</strong>
+                                <span>{getCreativeInfo(v.creative_id)?.cta_text}</span>
+                              </div>
+                            ) : (
+                              <div style={{ marginBottom: 4, color: '#999' }}>无 CTA，提交后按覆盖值或创意默认</div>
+                            )}
+                            {getCreativeInfo(v.creative_id)?.selling_points && getCreativeInfo(v.creative_id)?.selling_points!.length > 0 ? (
+                              <div>
+                                <strong>卖点：</strong>
+                                <span>{getCreativeInfo(v.creative_id)?.selling_points!.slice(0, 3).join(' / ')}</span>
+                              </div>
+                            ) : (
+                              <div style={{ color: '#999' }}>无卖点，提交后按覆盖值或创意默认</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       {variants.length > 2 && (
                         <button className="compact-btn compact-btn-text compact-btn-xs" onClick={() => removeVariant(idx)}>
                           删除

@@ -1597,6 +1597,47 @@ textarea.form-control {
   border-top: 1px solid #e6eaf0;
 }
 
+/* Experiment page accents */
+.section-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.section-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.section-list {
+  border: 1px solid #d6e4ff;
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.08);
+}
+
+.section-list::before {
+  border-top: 4px solid #2f54eb;
+}
+
+.section-detail {
+  border: 1px solid #ffe7ba;
+  box-shadow: 0 4px 12px rgba(250, 173, 20, 0.08);
+}
+
+.section-detail::before {
+  border-top: 4px solid #faad14;
+}
+
+.section-create {
+  border: 1px solid #d9f7be;
+  box-shadow: 0 4px 12px rgba(82, 196, 26, 0.08);
+}
+
+.section-create::before {
+  border-top: 4px solid #52c41a;
+}
+
 .trace-detail-meta {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
