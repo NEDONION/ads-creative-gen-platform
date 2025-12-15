@@ -2,8 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { creativeAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import type { AssetData } from '../types';
+import LanguageSwitch from '../components/LanguageSwitch';
+import { useI18n } from '../i18n';
 
 const AssetsPage: React.FC = () => {
+  const { t } = useI18n();
   const [assets, setAssets] = useState<AssetData[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -123,10 +126,11 @@ const AssetsPage: React.FC = () => {
 
       <div className="main-content">
         <div className="header">
-          <h1 className="page-title">创意管理</h1>
+          <h1 className="page-title">{t('headerAssets')}</h1>
           <div className="user-info">
+            <LanguageSwitch />
             <div className="avatar">A</div>
-            <span>管理员</span>
+            <span>{t('admin')}</span>
           </div>
         </div>
 
@@ -135,13 +139,13 @@ const AssetsPage: React.FC = () => {
               <div className="compact-toolbar">
                 <div className="compact-toolbar-left">
                   <div className="compact-stats-text">
-                    共 <strong>{total}</strong> 个素材
+                    {t('totalAssetsText').replace('{n}', String(total))}
                   </div>
                 </div>
                 <div className="compact-toolbar-right">
                   <button className="compact-btn compact-btn-outline compact-btn-sm" onClick={() => loadAssets(true)} disabled={loading}>
                     <i className="fas fa-sync"></i>
-                    <span>刷新</span>
+                    <span>{t('refresh')}</span>
                   </button>
                 </div>
               </div>
@@ -156,20 +160,20 @@ const AssetsPage: React.FC = () => {
             {loading ? (
               <div className="compact-loading">
                 <div className="loading"></div>
-                <div className="compact-loading-text">加载中...</div>
+                <div className="compact-loading-text">{t('loading')}</div>
               </div>
             ) : assets.length === 0 ? (
               <div className="compact-empty">
                 <i className="fas fa-images"></i>
-                <div className="compact-empty-text">暂无素材</div>
-                <div className="compact-empty-hint">生成创意后素材将显示在这里</div>
+                <div className="compact-empty-text">{t('emptyAssets')}</div>
+                <div className="compact-empty-hint">{t('emptyAssetsHint')}</div>
               </div>
             ) : (
               <>
                 <div className="compact-card">
                   <div className="compact-card-header">
-                    <h3 className="compact-card-title">按商品/创意分组</h3>
-                    <div className="compact-card-hint">点击卡片可查看该商品的所有素材</div>
+                    <h3 className="compact-card-title">{t('groupByProduct')}</h3>
+                    <div className="compact-card-hint">{t('groupByHint')}</div>
                   </div>
                   <div className="compact-card-body assets-group-grid">
                     {grouped.map((group) => (
@@ -179,7 +183,7 @@ const AssetsPage: React.FC = () => {
                             <div className="group-title">{group.productName}</div>
                             {group.ctaText && <div className="group-sub">CTA：{group.ctaText}</div>}
                             {group.sellingPoints && group.sellingPoints.length > 0 && (
-                              <div className="group-sub">卖点：{group.sellingPoints.join('、')}</div>
+                              <div className="group-sub">{t('sellingPointsLabel')}：{group.sellingPoints.join('、')}</div>
                             )}
                           </div>
                           <div className="group-badge">{group.assets.length} 张</div>
@@ -213,7 +217,7 @@ const AssetsPage: React.FC = () => {
                                 <div className="compact-asset-info long vertical-info">
                                   {asset.title && (
                                     <div className="info-row">
-                                      <span className="label">标题</span>
+                                      <span className="label">{t('titleLabel')}</span>
                                       <span className="value">{asset.title}</span>
                                     </div>
                                   )}
@@ -225,7 +229,7 @@ const AssetsPage: React.FC = () => {
                                   )}
                                   {asset.selling_points && asset.selling_points.length > 0 && (
                                     <div className="info-row">
-                                      <span className="label">卖点</span>
+                                      <span className="label">{t('sellingPointsLabel')}</span>
                                       <span className="value">{asset.selling_points.join(' / ')}</span>
                                     </div>
                                   )}
@@ -274,7 +278,7 @@ const AssetsPage: React.FC = () => {
                     </button>
 
                     <div className="compact-page-info">
-                      第 {currentPage} / {totalPages} 页
+                      {t('pageInfo').replace('{current}', String(currentPage)).replace('{total}', String(totalPages))}
                     </div>
                   </div>
                 )}

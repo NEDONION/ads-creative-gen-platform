@@ -1,42 +1,44 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useI18n } from '../i18n';
 
 const Sidebar: React.FC = () => {
+  const { t } = useI18n();
   return (
     <div className="sidebar">
       <div className="sidebar-header">
         <h2>
-          <i className="fas fa-bullseye"></i> <span>创意平台</span>
+          <i className="fas fa-bullseye"></i> <span>{t('appTitle')}</span>
         </h2>
       </div>
       <nav className="nav-menu">
         <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <i className="fas fa-home"></i>
-          <span>仪表盘</span>
+          <span>{t('navDashboard')}</span>
         </NavLink>
         <NavLink to="/creative" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <i className="fas fa-magic"></i>
-          <span>创意生成</span>
+          <span>{t('navCreative')}</span>
         </NavLink>
         <NavLink to="/assets" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <i className="fas fa-images"></i>
-          <span>素材管理</span>
+          <span>{t('navAssets')}</span>
         </NavLink>
         <NavLink to="/tasks" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <i className="fas fa-tasks"></i>
-          <span>任务管理</span>
+          <span>{t('navTasks')}</span>
         </NavLink>
         <NavLink to="/experiments" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <i className="fas fa-vial"></i>
-          <span>实验列表</span>
+          <span>{t('navExperiments')}</span>
         </NavLink>
         <NavLink to="/experiments/new" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <i className="fas fa-plus-circle"></i>
-          <span>新建实验</span>
+          <span>{t('navExperimentNew')}</span>
         </NavLink>
         <NavLink to="/traces" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <i className="fas fa-project-diagram"></i>
-          <span>调用链路</span>
+          <span>{t('navTraces')}</span>
         </NavLink>
       </nav>
     </div>

@@ -11,7 +11,7 @@
   --light: #fafafa;
   --gray: #8c8c8c;
   --border: #e8e8e8;
-  --sidebar-width: 160px;
+  --sidebar-width: 190px;
   --header-height: 44px;
   --card-radius: 6px;
   --transition: all 0.2s ease;
@@ -55,12 +55,15 @@ body {
 }
 
 .sidebar-header h2 {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--dark);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .sidebar-header h2 i {

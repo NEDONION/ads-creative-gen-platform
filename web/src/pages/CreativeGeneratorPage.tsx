@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { creativeAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
+import LanguageSwitch from '../components/LanguageSwitch';
+import { useI18n } from '../i18n';
 import type {
   ConfirmCopywritingRequest,
   CopywritingCandidates,
@@ -21,6 +23,7 @@ const defaultFormats = ['1:1'];
 
 const CreativeGeneratorPage: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [currentStep, setCurrentStep] = useState<WorkflowStep>(WorkflowStep.PRODUCT_INPUT);
 
   // Step1
@@ -179,7 +182,7 @@ const CreativeGeneratorPage: React.FC = () => {
   const renderStepIndicator = () => (
     <div className="step-indicator">
       {[WorkflowStep.PRODUCT_INPUT, WorkflowStep.COPYWRITING_SELECTION, WorkflowStep.CREATIVE_CONFIG].map((step, idx) => {
-        const titles = ['商品', '文案', '生成'];
+        const titles = [t('stepProduct'), t('stepCopy'), t('stepCreative')];
         return (
           <div key={step} className={`step ${currentStep === step ? 'active' : ''} ${currentStep > step ? 'done' : ''}`}>
             <div className="step-number">{idx + 1}</div>
@@ -202,40 +205,40 @@ const CreativeGeneratorPage: React.FC = () => {
     return (
       <div className="summary-card">
         <div className="summary-header">
-          <div className="summary-title">当前配置</div>
-          <div className="summary-step">步骤 {currentStep}/3</div>
+          <div className="summary-title">{t('currentConfig')}</div>
+          <div className="summary-step">{t('stepLabel')} {currentStep}/3</div>
         </div>
         <div className="summary-item">
-          <div className="label">商品</div>
-          <div className="value">{productName || '未填写'}</div>
+          <div className="label">{t('product')}</div>
+          <div className="value">{productName || t('notFilled')}</div>
         </div>
         <div className="summary-item">
-          <div className="label">输出语言</div>
-          <div className="value">{language === 'en' ? 'English' : language === 'zh' ? '中文' : '自动'}</div>
+          <div className="label">{t('outputLanguage')}</div>
+          <div className="value">{language === 'en' ? 'English' : language === 'zh' ? '中文' : t('auto')}</div>
         </div>
         <div className="summary-item">
-          <div className="label">CTA</div>
-          <div className="value">{selectedCTA || '待生成'}</div>
+          <div className="label">{t('cta')}</div>
+          <div className="value">{selectedCTA || t('pendingGen')}</div>
         </div>
         <div className="summary-item">
-          <div className="label">卖点</div>
+          <div className="label">{t('sellingPoints')}</div>
           <div className="value">
-            {selectedSPs.length > 0 ? selectedSPs.slice(0, 3).join(' / ') : '待生成'}
+            {selectedSPs.length > 0 ? selectedSPs.slice(0, 3).join(' / ') : t('pendingGen')}
           </div>
         </div>
         <div className="summary-item">
-          <div className="label">图片配置</div>
+          <div className="label">{t('imageConfig')}</div>
           <div className="value">
             <div className="tag-row">
-              <span className="summary-tag">数量 {formData.num_variants}</span>
-              {formData.style && <span className="summary-tag">风格 {formData.style}</span>}
+              <span className="summary-tag">{t('count')} {formData.num_variants}</span>
+              {formData.style && <span className="summary-tag">{t('style')} {formData.style}</span>}
             </div>
-            <div style={{ fontSize: 12, color: '#8c8c8c' }}>尺寸：{formData.requested_formats.join(', ') || '默认'}</div>
+            <div style={{ fontSize: 12, color: '#8c8c8c' }}>{t('size')}：{formData.requested_formats.join(', ') || '默认'}</div>
             {formData.product_image_url && <div className="ellipsis">图片：{formData.product_image_url}</div>}
           </div>
         </div>
         <div className="summary-item">
-          <div className="label">进度</div>
+          <div className="label">{t('progress')}</div>
           <div className="value">
             <div className="step-mini">
               <div className={`dot ${currentStep >= 1 ? 'active' : ''}`} />
@@ -254,10 +257,11 @@ const CreativeGeneratorPage: React.FC = () => {
 
       <div className="main-content">
         <div className="header">
-          <h1 className="page-title">文案 + 创意生成</h1>
+          <h1 className="page-title">{t('headerCreative')}</h1>
           <div className="user-info">
+            <LanguageSwitch />
             <div className="avatar">A</div>
-            <span>管理员</span>
+            <span>{t('admin')}</span>
           </div>
         </div>
 
@@ -271,14 +275,14 @@ const CreativeGeneratorPage: React.FC = () => {
                 {currentStep === WorkflowStep.PRODUCT_INPUT && (
                   <div className="compact-card">
                     <div className="compact-card-header">
-                      <h3 className="compact-card-title">步骤 1：输入商品</h3>
-                      <div className="compact-card-hint">输入商品名称，系统自动生成 CTA 和卖点</div>
+                      <h3 className="compact-card-title">{t('step1Title')}</h3>
+                      <div className="compact-card-hint">{t('step1Hint')}</div>
                     </div>
                     <div className="compact-card-body">
                       <form onSubmit={handleGenerateCopywriting}>
                         <div className="compact-form-group full-width">
                           <label className="compact-label">
-                            <span className="label-text">商品名称</span>
+                            <span className="label-text">{t('productName')}</span>
                             <span className="label-required">*</span>
                           </label>
                           <input
@@ -286,31 +290,31 @@ const CreativeGeneratorPage: React.FC = () => {
                             className="compact-input"
                             value={productName}
                             onChange={(e) => setProductName(e.target.value)}
-                            placeholder="如：智能手表 Pro"
+                            placeholder={t('productPlaceholder')}
                             required
                           />
                         </div>
                         <div className="compact-form-group">
                           <label className="compact-label">
-                            <span className="label-text">输出语言</span>
+                            <span className="label-text">{t('outputLanguageLabel')}</span>
                           </label>
                           <select
                             className="compact-input"
                             value={language}
                             onChange={(e) => setLanguage(e.target.value as LanguageOption)}
                           >
-                            <option value="auto">自动检测</option>
+                            <option value="auto">{t('auto')}</option>
                             <option value="zh">中文</option>
                             <option value="en">English</option>
                           </select>
                           <div className="compact-card-hint" style={{ marginTop: 4 }}>
-                            默认自动：根据商品名称检测中英文，可手动覆盖
+                            {t('outputLangHint')}
                           </div>
                         </div>
                         <div className="compact-form-actions">
                           <button type="submit" className="compact-btn compact-btn-primary" disabled={!canProceedToCopywriting || generatingCopywriting}>
                             <i className="fas fa-magic"></i>
-                            <span>{generatingCopywriting ? '生成中...' : '生成文案'}</span>
+                            <span>{generatingCopywriting ? t('generatingCopywriting') : t('generateCopywriting')}</span>
                           </button>
                         </div>
                       </form>
@@ -322,11 +326,11 @@ const CreativeGeneratorPage: React.FC = () => {
                 {currentStep === WorkflowStep.COPYWRITING_SELECTION && candidates && (
                   <div className="compact-card">
                     <div className="compact-card-header">
-                      <h3 className="compact-card-title">步骤 2：选择/编辑文案</h3>
-                      <div className="compact-card-hint">选择喜欢的 CTA 和卖点，可手动微调</div>
+                      <h3 className="compact-card-title">{t('step2Title')}</h3>
+                      <div className="compact-card-hint">{t('step2Hint')}</div>
                     </div>
                     <div className="compact-card-body">
-                      <div className="compact-section-title">CTA（行动号召）</div>
+                      <div className="compact-section-title">{t('ctaSection')}</div>
                       <div className="option-grid">
                         {candidates.cta_candidates.map((cta, idx) => (
                           <label key={idx} className={`radio-option ${selectedCTAIndex === idx ? 'active' : ''}`}>
@@ -342,18 +346,18 @@ const CreativeGeneratorPage: React.FC = () => {
                       </div>
                       <div className="compact-form-group full-width">
                         <label className="compact-label">
-                          <span className="label-text">编辑 CTA（可选）</span>
+                          <span className="label-text">{t('editCTA')}</span>
                         </label>
                         <input
                           type="text"
                           className="compact-input"
-                          placeholder="不填则使用选择的 CTA"
+                          placeholder={t('ctaPlaceholder')}
                           value={editedCTA}
                           onChange={(e) => setEditedCTA(e.target.value)}
                         />
                       </div>
 
-                      <div className="compact-section-title">卖点（至少选一项）</div>
+                      <div className="compact-section-title">{t('sellingSection')}</div>
                       <div className="option-grid">
                         {candidates.selling_point_candidates.map((sp, idx) => (
                           <label key={idx} className={`checkbox-option ${selectedSPIndexes.includes(idx) ? 'active' : ''}`}>
@@ -368,12 +372,12 @@ const CreativeGeneratorPage: React.FC = () => {
                       </div>
                       <div className="compact-form-group full-width">
                         <label className="compact-label">
-                          <span className="label-text">编辑卖点（可选，一行一个）</span>
+                          <span className="label-text">{t('editSP')}</span>
                         </label>
                         <textarea
                           className="compact-textarea"
                           rows={3}
-                          placeholder="不填则使用勾选的卖点"
+                          placeholder={t('spPlaceholder')}
                           value={editedSPs.join('\n')}
                           onChange={(e) => setEditedSPs(e.target.value.split('\n').map((v) => v.trim()).filter(Boolean))}
                         ></textarea>
@@ -382,11 +386,11 @@ const CreativeGeneratorPage: React.FC = () => {
                       <div className="compact-form-actions">
                         <button type="button" className="compact-btn compact-btn-outline" onClick={() => setCurrentStep(WorkflowStep.PRODUCT_INPUT)}>
                           <i className="fas fa-arrow-left"></i>
-                          <span>返回</span>
+                          <span>{t('back')}</span>
                         </button>
                         <button type="button" className="compact-btn compact-btn-primary" onClick={handleConfirmCopywriting} disabled={submitting}>
                           <i className="fas fa-check"></i>
-                          <span>{submitting ? '提交中...' : '确认文案'}</span>
+                          <span>{submitting ? t('submitting') : t('confirmCopy')}</span>
                         </button>
                       </div>
                     </div>
@@ -397,32 +401,32 @@ const CreativeGeneratorPage: React.FC = () => {
                 {currentStep === WorkflowStep.CREATIVE_CONFIG && candidates && (
                   <div className="compact-card">
                     <div className="compact-card-header">
-                      <h3 className="compact-card-title">步骤 3：生成创意</h3>
-                      <div className="compact-card-hint">设置风格/图片，提交即可生成</div>
+                      <h3 className="compact-card-title">{t('step3Title')}</h3>
+                      <div className="compact-card-hint">{t('step3Hint')}</div>
                     </div>
                     <div className="compact-card-body">
                       <form onSubmit={handleStartCreative}>
                         <div className="compact-form-grid">
                           <div className="compact-form-group">
                             <label className="compact-label">
-                              <span className="label-text">创意风格</span>
+                              <span className="label-text">{t('creativeStyle')}</span>
                             </label>
                             <select
                               className="compact-input"
                               value={formData.style}
                               onChange={(e) => setFormData({ ...formData, style: e.target.value })}
                             >
-                              <option value="">通用风格</option>
-                              <option value="bright">明亮风格</option>
-                              <option value="professional">专业风格</option>
-                              <option value="modern">现代风格</option>
-                              <option value="elegant">优雅风格</option>
+                              <option value="">{t('generalStyle')}</option>
+                              <option value="bright">{t('styleBright')}</option>
+                              <option value="professional">{t('styleProfessional')}</option>
+                              <option value="modern">{t('styleModern')}</option>
+                              <option value="elegant">{t('styleElegant')}</option>
                             </select>
                           </div>
 
                           <div className="compact-form-group">
                             <label className="compact-label">
-                              <span className="label-text">变体数量</span>
+                              <span className="label-text">{t('variantCount')}</span>
                             </label>
                             <input
                               type="number"
@@ -440,7 +444,7 @@ const CreativeGeneratorPage: React.FC = () => {
 
                           <div className="compact-form-group">
                             <label className="compact-label">
-                              <span className="label-text">产品图片URL（可选）</span>
+                              <span className="label-text">{t('productImageUrl')}</span>
                             </label>
                             <input
                               type="url"
@@ -453,7 +457,7 @@ const CreativeGeneratorPage: React.FC = () => {
 
                           <div className="compact-form-group">
                             <label className="compact-label">
-                              <span className="label-text">尺寸</span>
+                              <span className="label-text">{t('sizeLabel')}</span>
                             </label>
                             <input
                               type="text"
@@ -468,23 +472,23 @@ const CreativeGeneratorPage: React.FC = () => {
                                     .filter(Boolean),
                                 })
                               }
-                              placeholder="例如: 1:1,9:16"
+                              placeholder={t('sizePlaceholder')}
                             />
                           </div>
                         </div>
 
-                        <div className="compact-section-title">变体配置（每张图自定义风格/提示词）</div>
+                        <div className="compact-section-title">{t('variantConfigTitle')}</div>
                         <div className="compact-form-grid">
                           {variantConfigs.map((cfg, idx) => (
                             <div key={idx} className="compact-card" style={{ padding: '12px' }}>
                               <div className="compact-card-header" style={{ padding: 0, marginBottom: 8 }}>
                                 <h4 className="compact-card-title" style={{ fontSize: 14 }}>
-                                  变体 {idx + 1}
+                                  {t('variantTitle')} {idx + 1}
                                 </h4>
                               </div>
                               <div className="compact-form-group">
                                 <label className="compact-label">
-                                  <span className="label-text">风格</span>
+                                  <span className="label-text">{t('style')}</span>
                                 </label>
                                 <select
                                   className="compact-input"
@@ -497,22 +501,22 @@ const CreativeGeneratorPage: React.FC = () => {
                                     })
                                   }
                                 >
-                                  <option value="">沿用全局风格</option>
-                                  <option value="bright">明亮</option>
-                                  <option value="professional">专业</option>
-                                  <option value="modern">现代</option>
-                                  <option value="elegant">优雅</option>
-                                  <option value="vibrant">活力</option>
+                                  <option value="">{t('inheritGlobal')}</option>
+                                  <option value="bright">{t('bright')}</option>
+                                  <option value="professional">{t('professional')}</option>
+                                  <option value="modern">{t('modern')}</option>
+                                  <option value="elegant">{t('elegant')}</option>
+                                  <option value="vibrant">{t('vibrant')}</option>
                                 </select>
                               </div>
                               <div className="compact-form-group">
                                 <label className="compact-label">
-                                  <span className="label-text">自定义提示词</span>
+                                  <span className="label-text">{t('customPrompt')}</span>
                                 </label>
                                 <textarea
                                   className="compact-textarea"
                                   rows={2}
-                                  placeholder="可为空，留空则按 CTA/卖点自动拼提示词"
+                                  placeholder={t('promptPlaceholder')}
                                   value={cfg.prompt || ''}
                                   onChange={(e) =>
                                     setVariantConfigs((prev) => {
@@ -530,11 +534,11 @@ const CreativeGeneratorPage: React.FC = () => {
                         <div className="compact-form-actions">
                           <button type="button" className="compact-btn compact-btn-outline" onClick={() => setCurrentStep(WorkflowStep.COPYWRITING_SELECTION)}>
                             <i className="fas fa-arrow-left"></i>
-                            <span>返回</span>
+                            <span>{t('back')}</span>
                           </button>
                           <button type="submit" className="compact-btn compact-btn-primary" disabled={submitting}>
                             <i className="fas fa-bolt"></i>
-                            <span>{submitting ? '提交中...' : '开始生成'}</span>
+                            <span>{submitting ? t('submitting') : t('startGenerate')}</span>
                           </button>
                         </div>
                       </form>
@@ -545,7 +549,7 @@ const CreativeGeneratorPage: React.FC = () => {
                 <div className="compact-form-actions" style={{ marginTop: '8px' }}>
                   <button type="button" className="compact-btn compact-btn-text" onClick={resetAll}>
                     <i className="fas fa-undo"></i>
-                    <span>重新开始</span>
+                    <span>{t('restart')}</span>
                   </button>
                 </div>
               </div>

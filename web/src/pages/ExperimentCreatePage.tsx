@@ -3,9 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { experimentAPI, creativeAPI } from '../services/api';
 import type { ExperimentVariantInput } from '../types';
+import LanguageSwitch from '../components/LanguageSwitch';
+import { useI18n } from '../i18n';
 
 const ExperimentCreatePage: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const [productName, setProductName] = useState('');
   const [variants, setVariants] = useState<ExperimentVariantInput[]>([{ creative_id: '', weight: 0.5 }, { creative_id: '', weight: 0.5 }]);
@@ -47,7 +50,7 @@ const ExperimentCreatePage: React.FC = () => {
         const options = (assetsRes.data.assets || [])
           .map((asset) => {
             const resolvedProduct = asset.product_name || taskProductMap[String(asset.task_id)];
-            const label = asset.title || resolvedProduct || '创意';
+            const label = asset.title || resolvedProduct || t('creativeId');
             return {
               id: asset.id,
               label: `${label} (${asset.id})`,
@@ -63,7 +66,7 @@ const ExperimentCreatePage: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
-      setMessage('加载商品/创意选项失败');
+      setMessage(t('activityError'));
     }
   };
 
@@ -91,11 +94,11 @@ const ExperimentCreatePage: React.FC = () => {
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      setMessage('请填写实验名称');
+      setMessage(t('fillName'));
       return;
     }
     if (variants.some((v) => !v.creative_id || v.weight <= 0)) {
-      setMessage('请填写有效的创意ID和权重');
+      setMessage(t('fillVariant'));
       return;
     }
     setCreating(true);
@@ -103,13 +106,13 @@ const ExperimentCreatePage: React.FC = () => {
     try {
       const res = await experimentAPI.create({ name: name.trim(), product_name: productName.trim(), variants });
       if (res.code === 0 && res.data) {
-        setMessage(`创建成功，ID: ${res.data.experiment_id}`);
+        setMessage(`${t('createSuccess')} ID: ${res.data.experiment_id}`);
         navigate('/experiments');
       } else {
-        setMessage(res.message || '创建失败');
+        setMessage(res.message || t('createFail'));
       }
     } catch (err) {
-      setMessage('创建失败: ' + (err as Error).message);
+      setMessage(t('createFail') + ': ' + (err as Error).message);
     } finally {
       setCreating(false);
     }
@@ -125,10 +128,11 @@ const ExperimentCreatePage: React.FC = () => {
 
       <div className="main-content">
         <div className="header">
-          <h1 className="page-title">新建实验</h1>
+          <h1 className="page-title">{t('headerExperimentNew')}</h1>
           <div className="user-info">
+            <LanguageSwitch />
             <div className="avatar">A</div>
-            <span>管理员</span>
+            <span>{t('admin')}</span>
           </div>
         </div>
 
@@ -143,24 +147,24 @@ const ExperimentCreatePage: React.FC = () => {
 
             <div className="compact-card">
               <div className="compact-card-header">
-                <h3 className="compact-card-title">创建实验</h3>
-                <div className="compact-card-hint">配置变体和权重，创建后可在实验列表查看</div>
+                <h3 className="compact-card-title">{t('createExperiment')}</h3>
+                <div className="compact-card-hint">{t('createExperimentHint')}</div>
               </div>
               <div className="compact-card-body">
                 <div className="compact-form-grid">
                   <div className="compact-form-group">
                     <label className="compact-label">
-                      <span className="label-text">实验名称</span>
+                      <span className="label-text">{t('nameLabel')}</span>
                       <span className="label-required">*</span>
                     </label>
                     <input className="compact-input" value={name} onChange={(e) => setName(e.target.value)} />
                   </div>
                   <div className="compact-form-group">
                     <label className="compact-label">
-                      <span className="label-text">商品名</span>
+                      <span className="label-text">{t('productLabel')}</span>
                     </label>
                     <select className="compact-input" value={productName} onChange={(e) => setProductName(e.target.value)}>
-                      {productOptions.length === 0 && <option value="">暂无商品，请先创建任务</option>}
+                      {productOptions.length === 0 && <option value="">{t('noProduct')}</option>}
                       {productOptions.map((p) => (
                         <option key={p} value={p}>
                           {p}
@@ -170,18 +174,18 @@ const ExperimentCreatePage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="compact-section-title" style={{ marginTop: 8 }}>变体配置</div>
+                <div className="compact-section-title" style={{ marginTop: 8 }}>{t('variantConfigLabel')}</div>
                 <div className="compact-form-grid">
                   {variants.map((v, idx) => (
                     <div key={idx} className="compact-card" style={{ padding: 10, border: '1px solid #f0f0f0' }}>
                       <div className="compact-form-group">
-                        <label className="compact-label">创意ID</label>
+                        <label className="compact-label">{t('creativeId')}</label>
                         <select
                           className="compact-input"
                           value={v.creative_id || ''}
                           onChange={(e) => updateVariant(idx, 'creative_id', e.target.value)}
                         >
-                          <option value="">请选择创意</option>
+                          <option value="">{t('selectCreative')}</option>
                           {filteredCreativeOptions.map((opt) => (
                             <option key={opt.id} value={opt.id}>
                               {opt.label}
@@ -193,12 +197,12 @@ const ExperimentCreatePage: React.FC = () => {
                             {creativeOptions.find((opt) => opt.id === v.creative_id)?.thumb ? (
                               <img
                                 src={creativeOptions.find((opt) => opt.id === v.creative_id)!.thumb}
-                                alt="预览"
+                                alt={t('creativeId')}
                                 style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #eee' }}
                               />
                             ) : (
                               <div style={{ width: 80, height: 80, borderRadius: 6, border: '1px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 12 }}>
-                                无缩略图
+                                {t('noThumb')}
                               </div>
                             )}
                             <div style={{ fontSize: 12, color: '#555' }}>
@@ -208,7 +212,7 @@ const ExperimentCreatePage: React.FC = () => {
                         )}
                       </div>
                       <div className="compact-form-group">
-                        <label className="compact-label">权重 (0-1)</label>
+                        <label className="compact-label">{t('weight')} (0-1)</label>
                         <input
                           className="compact-input"
                           type="number"
@@ -218,17 +222,17 @@ const ExperimentCreatePage: React.FC = () => {
                         />
                       </div>
                       <div className="compact-form-group">
-                        <label className="compact-label">CTA（选择或覆盖）</label>
+                        <label className="compact-label">{t('ctaOverride')}</label>
                         {(() => {
                           const info = (creativeOptions.find((opt) => opt.id === v.creative_id) || {}) as { cta_text?: string };
                           const creativeCTA = info.cta_text || '';
                           const selectedCTA = (v as any).cta_text || '';
-                          const options = [{ value: '', label: '使用创意默认' }];
+                          const options = [{ value: '', label: t('useDefault') }];
                           if (creativeCTA) {
-                            options.push({ value: creativeCTA, label: `创意：${creativeCTA}` });
+                            options.push({ value: creativeCTA, label: `${t('creativeCTA')}${creativeCTA}` });
                           }
                           if (selectedCTA && selectedCTA !== creativeCTA) {
-                            options.push({ value: selectedCTA, label: `当前覆盖：${selectedCTA}` });
+                            options.push({ value: selectedCTA, label: `${t('currentOverride')}${selectedCTA}` });
                           }
                           return (
                             <>
@@ -247,7 +251,7 @@ const ExperimentCreatePage: React.FC = () => {
                                 className="compact-input"
                                 style={{ marginTop: 6 }}
                                 type="text"
-                                placeholder="手动输入覆盖 CTA"
+                                placeholder={t('ctaPlaceholder')}
                                 value={selectedCTA}
                                 onChange={(e) => updateVariant(idx, 'cta_text' as keyof ExperimentVariantInput, e.target.value)}
                               />
@@ -256,7 +260,7 @@ const ExperimentCreatePage: React.FC = () => {
                         })()}
                       </div>
                       <div className="compact-form-group">
-                        <label className="compact-label">卖点选择（可多选）</label>
+                        <label className="compact-label">{t('spOverride')}</label>
                         {(() => {
                           const info = (creativeOptions.find((opt) => opt.id === v.creative_id) || {}) as { selling_points?: string[] };
                           const spOptions = Array.isArray(info.selling_points) ? info.selling_points : [];
@@ -275,13 +279,13 @@ const ExperimentCreatePage: React.FC = () => {
                               ))}
                             </div>
                           ) : (
-                            <div style={{ color: '#999', fontSize: 12 }}>该创意暂无卖点，可在创意生成时补充</div>
+                            <div style={{ color: '#999', fontSize: 12 }}>{t('pendingGen')}</div>
                           );
                         })()}
                       </div>
                       {v.creative_id && (
                         <div className="compact-form-group">
-                          <label className="compact-label">当前创意文案（回填自生成时）</label>
+                          <label className="compact-label">{t('copywriting')}</label>
                           <div style={{ background: '#fafafa', border: '1px solid #eee', borderRadius: 6, padding: 8, fontSize: 12, color: '#555' }}>
                             {(() => {
                               const info = creativeOptions.find((opt) => opt.id === v.creative_id);
@@ -291,18 +295,18 @@ const ExperimentCreatePage: React.FC = () => {
                                   <span>{info.cta_text}</span>
                                 </div>
                               ) : (
-                                <div style={{ marginBottom: 4, color: '#999' }}>无 CTA，提交后按覆盖值或创意默认</div>
+                                <div style={{ marginBottom: 4, color: '#999' }}>{t('pendingGen')}</div>
                               );
                             })()}
                             {(() => {
                               const info = creativeOptions.find((opt) => opt.id === v.creative_id);
                               return info?.selling_points && info.selling_points.length > 0 ? (
                                 <div>
-                                  <strong>卖点：</strong>
+                                  <strong>{t('sellingPointsLabel')}：</strong>
                                   <span>{info.selling_points.slice(0, 3).join(' / ')}</span>
                                 </div>
                               ) : (
-                                <div style={{ color: '#999' }}>无卖点，提交后按覆盖值或创意默认</div>
+                                <div style={{ color: '#999' }}>{t('pendingGen')}</div>
                               );
                             })()}
                           </div>
@@ -310,7 +314,7 @@ const ExperimentCreatePage: React.FC = () => {
                       )}
                       {variants.length > 2 && (
                         <button className="compact-btn compact-btn-text compact-btn-xs" onClick={() => removeVariant(idx)}>
-                          删除
+                          {t('delete')}
                         </button>
                       )}
                     </div>
@@ -319,14 +323,14 @@ const ExperimentCreatePage: React.FC = () => {
                 <div className="compact-form-actions" style={{ marginTop: 8, display: 'flex', gap: 10 }}>
                   <button className="compact-btn compact-btn-outline compact-btn-sm" onClick={addVariant}>
                     <i className="fas fa-plus"></i>
-                    <span>添加变体</span>
+                    <span>{t('addVariantBtn')}</span>
                   </button>
                   <button className="compact-btn compact-btn-primary" onClick={handleCreate} disabled={creating}>
                     <i className="fas fa-save"></i>
-                    <span>{creating ? '创建中...' : '创建实验'}</span>
+                    <span>{creating ? t('submitting') : t('submitCreate')}</span>
                   </button>
                   <button className="compact-btn compact-btn-text compact-btn-sm" onClick={() => navigate('/experiments')}>
-                    返回列表
+                    {t('backToList')}
                   </button>
                 </div>
               </div>

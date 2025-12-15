@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { creativeAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import type { TaskListItem, TaskDetailData } from '../types';
+import LanguageSwitch from '../components/LanguageSwitch';
+import { useI18n } from '../i18n';
 
 const TasksPage: React.FC = () => {
+  const { t, lang } = useI18n();
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -67,12 +70,12 @@ const TasksPage: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { class: string; text: string; icon: string }> = {
-      pending: { class: 'compact-status-pending', text: '待处理', icon: 'fa-clock' },
-      queued: { class: 'compact-status-pending', text: '排队中', icon: 'fa-hourglass-half' },
-      processing: { class: 'compact-status-processing', text: '处理中', icon: 'fa-spinner' },
-      completed: { class: 'compact-status-completed', text: '已完成', icon: 'fa-check-circle' },
-      failed: { class: 'compact-status-failed', text: '失败', icon: 'fa-times-circle' },
-      cancelled: { class: 'compact-status-pending', text: '已取消', icon: 'fa-ban' },
+      pending: { class: 'compact-status-pending', text: lang === 'en' ? 'Pending' : '待处理', icon: 'fa-clock' },
+      queued: { class: 'compact-status-pending', text: lang === 'en' ? 'Queued' : '排队中', icon: 'fa-hourglass-half' },
+      processing: { class: 'compact-status-processing', text: lang === 'en' ? 'Processing' : '处理中', icon: 'fa-spinner' },
+      completed: { class: 'compact-status-completed', text: lang === 'en' ? 'Completed' : '已完成', icon: 'fa-check-circle' },
+      failed: { class: 'compact-status-failed', text: lang === 'en' ? 'Failed' : '失败', icon: 'fa-times-circle' },
+      cancelled: { class: 'compact-status-pending', text: lang === 'en' ? 'Cancelled' : '已取消', icon: 'fa-ban' },
     };
 
     const statusInfo = statusMap[status] || { class: 'compact-status-pending', text: status, icon: 'fa-question-circle' };
@@ -102,10 +105,11 @@ const TasksPage: React.FC = () => {
 
       <div className="main-content">
         <div className="header">
-          <h1 className="page-title">{showDetail ? '任务详情' : '任务管理'}</h1>
+          <h1 className="page-title">{showDetail ? t('taskDetail') : t('headerTasks')}</h1>
           <div className="user-info">
+            <LanguageSwitch />
             <div className="avatar">A</div>
-            <span>管理员</span>
+            <span>{t('admin')}</span>
           </div>
         </div>
 
@@ -116,13 +120,13 @@ const TasksPage: React.FC = () => {
                 <div className="compact-toolbar">
                   <div className="compact-toolbar-left">
                     <div className="compact-stats-text">
-                      共 <strong>{total}</strong> 个任务
+                      {t('totalTasksText').replace('{n}', String(total))}
                     </div>
                   </div>
                   <div className="compact-toolbar-right">
                     <button className="compact-btn compact-btn-outline compact-btn-sm" onClick={loadTasks} disabled={loading}>
                       <i className="fas fa-sync"></i>
-                      <span>刷新</span>
+                      <span>{t('refresh')}</span>
                     </button>
                   </div>
                 </div>
@@ -137,13 +141,13 @@ const TasksPage: React.FC = () => {
                 {loading ? (
                   <div className="compact-loading">
                     <div className="loading"></div>
-                    <div className="compact-loading-text">加载中...</div>
+                    <div className="compact-loading-text">{t('loading')}</div>
                   </div>
                 ) : tasks.length === 0 ? (
                   <div className="compact-empty">
                     <i className="fas fa-tasks"></i>
-                    <div className="compact-empty-text">暂无任务</div>
-                    <div className="compact-empty-hint">创建创意生成任务后将显示在这里</div>
+                    <div className="compact-empty-text">{t('emptyTasks')}</div>
+                    <div className="compact-empty-hint">{t('emptyTasksHint')}</div>
                   </div>
                 ) : (
                   <>
@@ -151,14 +155,14 @@ const TasksPage: React.FC = () => {
                       <table className="compact-table">
                         <thead>
                           <tr>
-                            <th style={{ width: '100px' }}>任务ID</th>
-                            <th>标题/商品</th>
-                            <th>文案</th>
-                            <th style={{ width: '140px' }}>状态</th>
-                            <th style={{ width: '150px' }}>进度</th>
-                            <th style={{ width: '120px' }}>创建时间</th>
-                            <th style={{ width: '120px' }}>完成时间</th>
-                            <th style={{ width: '140px' }}>操作</th>
+                            <th style={{ width: '100px' }}>{t('taskId')}</th>
+                            <th>{t('titleProduct')}</th>
+                            <th>{t('copywriting')}</th>
+                            <th style={{ width: '140px' }}>{t('status')}</th>
+                            <th style={{ width: '150px' }}>{t('progressLabel')}</th>
+                            <th style={{ width: '120px' }}>{t('createdAt')}</th>
+                            <th style={{ width: '120px' }}>{t('completedAt')}</th>
+                            <th style={{ width: '140px' }}>{t('actions')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -171,12 +175,12 @@ const TasksPage: React.FC = () => {
                               </td>
                               <td className="compact-table-title">
                                 <div>{task.title}</div>
-                                {task.product_name && <div style={{ color: '#8c8c8c', fontSize: 12 }}>商品：{task.product_name}</div>}
+                                {task.product_name && <div style={{ color: '#8c8c8c', fontSize: 12 }}>{t('productNameLabel')}：{task.product_name}</div>}
                               </td>
                               <td>
                                 {task.cta_text && <div style={{ fontWeight: 500 }}>CTA：{task.cta_text}</div>}
                                 {task.selling_points && task.selling_points.length > 0 && (
-                                  <div style={{ color: '#8c8c8c', fontSize: 12 }}>卖点：{task.selling_points.join('、')}</div>
+                                  <div style={{ color: '#8c8c8c', fontSize: 12 }}>{t('sellingPointsLabel')}：{task.selling_points.join('、')}</div>
                                 )}
                               </td>
                               <td style={{ minWidth: '140px' }}>{getStatusBadge(task.status)}</td>
@@ -200,26 +204,26 @@ const TasksPage: React.FC = () => {
                                   className="compact-btn compact-btn-text compact-btn-xs"
                                   onClick={() => viewTask(task.id)}
                                 >
-                                  详情
+                                  {t('details')}
                                 </button>
                                 <button
                                   className="compact-btn compact-btn-text compact-btn-xs"
                                   style={{ color: '#ff4d4f' }}
                                   onClick={async () => {
-                                    if (!window.confirm('确定删除该任务及其素材吗？')) return;
+                                    if (!window.confirm(t('deleteConfirm'))) return;
                                     try {
                                       const res = await creativeAPI.deleteTask(task.id);
                                       if (res.code === 0) {
                                         loadTasks();
                                       } else {
-                                        alert(res.message || '删除失败');
+                                        alert(res.message || t('deleteFailed'));
                                       }
                                     } catch (err) {
-                                      alert('删除失败: ' + (err as Error).message);
+                                      alert(t('deleteFailed') + ': ' + (err as Error).message);
                                     }
                                   }}
                                 >
-                                  删除
+                                  {t('delete')}
                                 </button>
                               </td>
                             </tr>
@@ -263,7 +267,7 @@ const TasksPage: React.FC = () => {
                         </button>
 
                         <div className="compact-page-info">
-                          第 {currentPage} / {totalPages} 页
+                          {t('pageInfo').replace('{current}', String(currentPage)).replace('{total}', String(totalPages))}
                         </div>
                       </div>
                     )}
@@ -272,18 +276,18 @@ const TasksPage: React.FC = () => {
               </>
             ) : (
               <>
-                <div className="compact-toolbar">
+                    <div className="compact-toolbar">
                   <div className="compact-toolbar-left">
                     <button className="compact-btn compact-btn-outline compact-btn-sm" onClick={closeTaskDetail}>
                       <i className="fas fa-arrow-left"></i>
-                      <span>返回列表</span>
+                      <span>{t('backToList')}</span>
                     </button>
                   </div>
                   <div className="compact-toolbar-right">
                     {selectedTask && (
                       <button className="compact-btn compact-btn-outline compact-btn-sm" onClick={() => viewTask(selectedTask.task_id)} disabled={detailRefreshing}>
                         <i className="fas fa-sync"></i>
-                        <span>{detailRefreshing ? '刷新中...' : '刷新详情'}</span>
+                        <span>{detailRefreshing ? t('refreshing') : t('refreshDetail')}</span>
                       </button>
                     )}
                   </div>
@@ -293,17 +297,17 @@ const TasksPage: React.FC = () => {
                       <>
                         <div className="compact-detail-grid">
                         <div className="compact-detail-item">
-                          <div className="compact-detail-label">标题</div>
+                          <div className="compact-detail-label">{t('taskTitle')}</div>
                           <div className="compact-detail-value">{selectedTask.title}</div>
                         </div>
                         {selectedTask.product_name && (
                           <div className="compact-detail-item">
-                            <div className="compact-detail-label">商品名称</div>
+                            <div className="compact-detail-label">{t('productNameLabel')}</div>
                             <div className="compact-detail-value">{selectedTask.product_name}</div>
                           </div>
                         )}
                         <div className="compact-detail-item">
-                          <div className="compact-detail-label">状态</div>
+                          <div className="compact-detail-label">{t('status')}</div>
                           <div className="compact-detail-value">{getStatusBadge(selectedTask.status)}</div>
                         </div>
                         {selectedTask.cta_text && (
@@ -314,12 +318,12 @@ const TasksPage: React.FC = () => {
                         )}
                         {selectedTask.selling_points && selectedTask.selling_points.length > 0 && (
                           <div className="compact-detail-item">
-                            <div className="compact-detail-label">卖点</div>
+                            <div className="compact-detail-label">{t('sellingPointsLabel')}</div>
                             <div className="compact-detail-value">{selectedTask.selling_points.join('、')}</div>
                           </div>
                         )}
                         <div className="compact-detail-item">
-                          <div className="compact-detail-label">进度</div>
+                          <div className="compact-detail-label">{t('progressLabel')}</div>
                           <div className="compact-detail-value">
                             <div className="compact-progress-wrapper">
                               <div className="compact-progress-bar">
@@ -334,21 +338,21 @@ const TasksPage: React.FC = () => {
                       </div>
                       {selectedTask.variant_prompts && selectedTask.variant_prompts.length > 0 && (
                         <div className="compact-detail-item" style={{ gridColumn: '1 / -1' }}>
-                          <div className="compact-detail-label">变体配置</div>
+                          <div className="compact-detail-label">{t('variantConfig')}</div>
                           <div className="compact-detail-value">
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
                               {selectedTask.variant_prompts.map((p, idx) => {
                                 const style = selectedTask.variant_styles && selectedTask.variant_styles[idx];
-                                const promptText = p || '（生成时自动拼接）';
+                                const promptText = p || (lang === 'en' ? '(auto-composed when generating)' : '（生成时自动拼接）');
                                 const shortPrompt = promptText.length > 80 ? `${promptText.slice(0, 80)}...` : promptText;
                                 return (
                                   <div key={idx} className="compact-card" style={{ padding: 10, border: '1px solid #e8e8e8', background: '#fafafa' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                      <div style={{ fontWeight: 700 }}>变体 {idx + 1}</div>
-                                      {style && <span className="compact-badge" style={{ background: '#f0f5ff', color: '#1d39c4' }}>风格：{style}</span>}
+                                      <div style={{ fontWeight: 700 }}>{t('variantTitle')} {idx + 1}</div>
+                                      {style && <span className="compact-badge" style={{ background: '#f0f5ff', color: '#1d39c4' }}>{t('styleLabelShort')}：{style}</span>}
                                     </div>
                                     <div style={{ fontSize: 12, color: '#555', lineHeight: 1.5 }} title={promptText}>
-                                      提示词：{shortPrompt}
+                                      {t('promptLabel')}：{shortPrompt}
                                     </div>
                                   </div>
                                 );
@@ -358,17 +362,17 @@ const TasksPage: React.FC = () => {
                         </div>
                       )}
                       <div className="compact-detail-item">
-                        <div className="compact-detail-label">创建时间</div>
+                        <div className="compact-detail-label">{t('createdAt')}</div>
                         <div className="compact-detail-value">{formatDate(selectedTask.created_at || '')}</div>
                       </div>
                       <div className="compact-detail-item">
-                        <div className="compact-detail-label">完成时间</div>
+                        <div className="compact-detail-label">{t('completedAt')}</div>
                         <div className="compact-detail-value">
                           {selectedTask.completed_at ? formatDate(selectedTask.completed_at) : '-'}
                         </div>
                       </div>
                       <div className="compact-detail-item">
-                        <div className="compact-detail-label">任务ID</div>
+                        <div className="compact-detail-label">{t('taskId')}</div>
                         <div className="compact-detail-value">
                           <code className="compact-code">{selectedTask.task_id}</code>
                         </div>
@@ -385,7 +389,7 @@ const TasksPage: React.FC = () => {
                     {selectedTask.creatives && selectedTask.creatives.length > 0 && (
                       <>
                         <div className="compact-section-title">
-                          生成素材 ({selectedTask.creatives.length})
+                          {t('assetGenerated')} ({selectedTask.creatives.length})
                         </div>
                         <div className="task-assets-grid">
                           {selectedTask.creatives.map((creative) => (
@@ -397,8 +401,8 @@ const TasksPage: React.FC = () => {
                                   <code className="compact-asset-id">{creative.id.substring(0, 8)}...</code>
                                 </div>
                                 <div className="meta-right">
-                                  {creative.style && <span className="summary-chip">风格: {creative.style}</span>}
-                                  {creative.generation_prompt && <span className="summary-chip">提示词已设置</span>}
+                                  {creative.style && <span className="summary-chip">{t('styleLabelShort')}: {creative.style}</span>}
+                                  {creative.generation_prompt && <span className="summary-chip">{t('promptSet')}</span>}
                                 </div>
                               </div>
                               <div className="vertical-body">
@@ -414,22 +418,22 @@ const TasksPage: React.FC = () => {
                                     }}
                                   />
                                 </div>
-                                {(creative.style || creative.generation_prompt) && (
-                                  <div className="compact-asset-info long vertical-info">
-                                    {creative.style && (
-                                      <div className="info-row">
-                                        <span className="label">风格</span>
-                                        <span className="value">{creative.style}</span>
+                                    {(creative.style || creative.generation_prompt) && (
+                                      <div className="compact-asset-info long vertical-info">
+                                        {creative.style && (
+                                          <div className="info-row">
+                                            <span className="label">{t('styleLabelShort')}</span>
+                                            <span className="value">{creative.style}</span>
+                                          </div>
+                                        )}
+                                        {creative.generation_prompt && (
+                                          <div className="info-row">
+                                            <span className="label">{t('promptLabel')}</span>
+                                            <span className="value">{creative.generation_prompt}</span>
+                                          </div>
+                                        )}
                                       </div>
                                     )}
-                                    {creative.generation_prompt && (
-                                      <div className="info-row">
-                                        <span className="label">提示词</span>
-                                        <span className="value">{creative.generation_prompt}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
                               </div>
                             </div>
                           ))}

@@ -3,8 +3,11 @@ import { Link } from 'react-router-dom';
 import { experimentAPI, creativeAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import type { ExperimentMetrics, Experiment } from '../types';
+import LanguageSwitch from '../components/LanguageSwitch';
+import { useI18n } from '../i18n';
 
 const ExperimentsPage: React.FC = () => {
+  const { t, lang } = useI18n();
   const [message, setMessage] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<ExperimentMetrics | null>(null);
   const [creativeOptions, setCreativeOptions] = useState<{ id: string; label: string; thumb?: string; product_name?: string; cta_text?: string; selling_points?: string[]; title?: string }[]>([]);
@@ -44,7 +47,7 @@ const ExperimentsPage: React.FC = () => {
         const options = (assetsRes.data.assets || [])
           .map((asset) => {
             const resolvedProduct = asset.product_name || taskProductMap[String(asset.task_id)];
-            const label = asset.title || resolvedProduct || '创意';
+            const label = asset.title || resolvedProduct || t('creativeId');
             return {
               id: asset.id,
               label: `${label} (${asset.id})`,
@@ -60,7 +63,7 @@ const ExperimentsPage: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
-      setMessage('加载创意选项失败');
+      setMessage(t('activityError'));
     }
   };
 
@@ -73,7 +76,7 @@ const ExperimentsPage: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
-      setMessage('加载实验列表失败');
+      setMessage(t('activityError'));
     } finally {
       setListLoading(false);
     }
@@ -85,13 +88,13 @@ const ExperimentsPage: React.FC = () => {
     // 已停止的实验不允许重新激活
     const targetExp = experimentList.find((e) => e.experiment_id === targetId);
     if (targetExp?.status === 'archived') {
-      setMessage('已停止的实验无法再次激活');
+      setMessage(t('stopped'));
       return;
     }
     try {
       const res = await experimentAPI.updateStatus(targetId, 'active');
       if (res.code === 0) {
-        setMessage('已激活实验');
+        setMessage(t('activate'));
         const now = new Date().toISOString();
         setSelectedExp((prev) => (prev && prev.experiment_id === targetId ? { ...prev, status: 'active', start_at: prev.start_at || now } : prev));
         setExperimentList((prev) =>
@@ -101,10 +104,10 @@ const ExperimentsPage: React.FC = () => {
         );
         loadExperiments();
       } else {
-        setMessage(res.message || '激活失败');
+        setMessage(res.message || t('activityError'));
       }
     } catch (err) {
-      setMessage('激活失败: ' + (err as Error).message);
+      setMessage(t('activityError') + ': ' + (err as Error).message);
     }
   };
 
@@ -114,7 +117,7 @@ const ExperimentsPage: React.FC = () => {
     try {
       const res = await experimentAPI.updateStatus(targetId, 'archived');
       if (res.code === 0) {
-        setMessage('已停止实验');
+        setMessage(t('stopped'));
         const now = new Date().toISOString();
         setSelectedExp((prev) => (prev && prev.experiment_id === targetId ? { ...prev, status: 'archived', end_at: now } : prev));
         setExperimentList((prev) =>
@@ -124,10 +127,10 @@ const ExperimentsPage: React.FC = () => {
         );
         loadExperiments();
       } else {
-        setMessage(res.message || '停止失败');
+        setMessage(res.message || t('activityError'));
       }
     } catch (err) {
-      setMessage('停止失败: ' + (err as Error).message);
+      setMessage(t('activityError') + ': ' + (err as Error).message);
     }
   };
 
@@ -135,7 +138,7 @@ const ExperimentsPage: React.FC = () => {
     setMetricsLoading(true);
     const targetId = id || selectedExp?.experiment_id;
     if (!targetId) {
-      setMessage('请先选择实验');
+      setMessage(t('noExperiment'));
       setMetricsLoading(false);
       return;
     }
@@ -144,10 +147,10 @@ const ExperimentsPage: React.FC = () => {
       if (res.code === 0 && res.data) {
         setMetrics(res.data);
       } else {
-        setMessage(res.message || '获取结果失败');
+        setMessage(res.message || t('activityError'));
       }
     } catch (err) {
-      setMessage('获取结果失败: ' + (err as Error).message);
+      setMessage(t('activityError') + ': ' + (err as Error).message);
     } finally {
       setMetricsLoading(false);
     }
@@ -158,10 +161,10 @@ const ExperimentsPage: React.FC = () => {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setMessage('已复制实验ID');
+      setMessage(t('copySuccess'));
     } catch (err) {
       console.error('copy failed', err);
-      setMessage('复制失败');
+      setMessage(t('copyFail'));
     }
   };
 
@@ -181,10 +184,10 @@ const ExperimentsPage: React.FC = () => {
     const minutes = Math.floor((ms / (1000 * 60)) % 60);
     if (hours >= 24) {
       const days = Math.floor(hours / 24);
-      return `${days}天${hours % 24}小时`;
+      return lang === 'en' ? `${days}d ${hours % 24}h` : `${days}天${hours % 24}小时`;
     }
-    if (hours > 0) return `${hours}小时${minutes}分`;
-    return `${minutes}分`;
+    if (hours > 0) return lang === 'en' ? `${hours}h ${minutes}m` : `${hours}小时${minutes}分`;
+    return lang === 'en' ? `${minutes}m` : `${minutes}分`;
   };
 
   const handleSelectExperiment = (id: string) => {
@@ -197,7 +200,7 @@ const ExperimentsPage: React.FC = () => {
     setMetrics(null);
     const hit = experimentList.find((e) => e.experiment_id === id) || null;
     setSelectedExp(hit);
-    setMessage(`已选择实验 ${id}`);
+    setMessage(`${t('view')} ${id}`);
     loadMetrics(id);
   };
 
@@ -216,10 +219,11 @@ const ExperimentsPage: React.FC = () => {
 
       <div className="main-content">
         <div className="header">
-          <h1 className="page-title">实验管理</h1>
+          <h1 className="page-title">{t('headerExperiments')}</h1>
           <div className="user-info">
+            <LanguageSwitch />
             <div className="avatar">A</div>
-            <span>管理员</span>
+            <span>{t('admin')}</span>
           </div>
         </div>
 
@@ -235,16 +239,16 @@ const ExperimentsPage: React.FC = () => {
             <div className="compact-card gradient-card section-card section-list">
               <div className="compact-card-header">
                 <div>
-                  <h3 className="compact-card-title">实验列表</h3>
-                  <div className="compact-card-hint">轻量面板：查看 / 激活 / 停止 / 指标</div>
+                  <h3 className="compact-card-title">{t('experimentList')}</h3>
+                  <div className="compact-card-hint">{t('experimentListHint')}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button className="compact-btn compact-btn-text compact-btn-sm" onClick={loadExperiments} disabled={listLoading}>
                     <i className="fas fa-sync-alt"></i>
-                    <span>{listLoading ? '加载中...' : '刷新'}</span>
+                    <span>{listLoading ? t('loadingShort') : t('refresh')}</span>
                   </button>
                   <Link className="compact-btn compact-btn-primary compact-btn-sm" to="/experiments/new">
-                    新建实验
+                    {t('createExperiment')}
                   </Link>
                 </div>
               </div>
@@ -254,18 +258,18 @@ const ExperimentsPage: React.FC = () => {
                     <div className="loading"></div>
                   </div>
                 ) : experimentList.length === 0 ? (
-                  <div style={{ color: '#666', fontSize: 13 }}>暂无实验，先创建一个吧</div>
+                  <div style={{ color: '#666', fontSize: 13 }}>{t('noExperiment')}</div>
                 ) : (
                   <div className="compact-table-wrapper">
                     <table className="compact-table">
                       <thead>
                         <tr>
-                          <th>名称</th>
-                          <th>商品</th>
-                          <th>状态</th>
-                          <th>创建时间</th>
-                          <th>实验ID</th>
-                          <th>操作</th>
+                          <th>{t('name')}</th>
+                          <th>{t('product')}</th>
+                          <th>{t('statusLabel')}</th>
+                          <th>{t('createdAtShort')}</th>
+                          <th>{t('experimentId')}</th>
+                          <th>{t('actionsShort')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -289,7 +293,7 @@ const ExperimentsPage: React.FC = () => {
                                 className={`compact-btn compact-btn-xs ${selectedExp?.experiment_id === exp.experiment_id ? 'compact-btn-outline' : 'compact-btn-primary'}`}
                                 onClick={() => handleSelectExperiment(exp.experiment_id)}
                               >
-                                {selectedExp?.experiment_id === exp.experiment_id ? '收起' : '查看'}
+                                {selectedExp?.experiment_id === exp.experiment_id ? t('collapse') : t('view')}
                               </button>
                             </td>
                           </tr>
@@ -304,8 +308,8 @@ const ExperimentsPage: React.FC = () => {
                 <div className="compact-card section-card section-detail" style={{ marginTop: 16, borderColor: '#e6f0ff', boxShadow: '0 8px 18px rgba(0,0,0,0.05)' }}>
                   <div className="compact-card-header" style={{ alignItems: 'flex-start' }}>
                     <div>
-                      <h3 className="compact-card-title">实验详情</h3>
-                      <div className="compact-card-hint">时长 / 定义 / 变体素材</div>
+                      <h3 className="compact-card-title">{t('detailTitle')}</h3>
+                      <div className="compact-card-hint">{t('detailHint')}</div>
                     </div>
                     <div className="compact-card-actions" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <button
@@ -313,7 +317,7 @@ const ExperimentsPage: React.FC = () => {
                         onClick={() => handleActivate(selectedExp.experiment_id)}
                         disabled={selectedExp.status === 'active' || selectedExp.status === 'archived'}
                       >
-                        {selectedExp.status === 'archived' ? '已停止' : selectedExp.status === 'active' ? '已激活' : '激活'}
+                        {selectedExp.status === 'archived' ? t('stopped') : selectedExp.status === 'active' ? t('activated') : t('activate')}
                       </button>
                       <button
                         className="compact-btn compact-btn-danger compact-btn-xs"
@@ -321,50 +325,50 @@ const ExperimentsPage: React.FC = () => {
                         onClick={() => handleStop(selectedExp.experiment_id)}
                         disabled={selectedExp.status === 'archived'}
                       >
-                        {selectedExp.status === 'archived' ? '已停止' : '停止'}
+                        {selectedExp.status === 'archived' ? t('stopped') : t('stop')}
                       </button>
                       <button className="compact-btn compact-btn-outline compact-btn-xs" onClick={() => loadMetrics(selectedExp.experiment_id)} disabled={metricsLoading}>
-                        {metricsLoading ? '刷新中...' : '刷新指标'}
+                        {metricsLoading ? t('refreshing') : t('refreshMetrics')}
                       </button>
                       <button className="compact-btn compact-btn-text compact-btn-xs" onClick={() => { setSelectedExp(null); setMetrics(null); }}>
-                        收起
+                        {t('collapse')}
                       </button>
                     </div>
                   </div>
                   <div className="compact-card-body">
                     <div className="detail-meta-grid">
                       <div className="meta-block wide">
-                        <div className="meta-label">实验ID</div>
-                        <div className="meta-value code">
+                        <div className="meta-label">{t('experimentId')}</div>
+                          <div className="meta-value code">
                           <code>{selectedExp.experiment_id}</code>
                           <button className="compact-btn compact-btn-outline compact-btn-xs" onClick={() => copyToClipboard(selectedExp.experiment_id)}>
-                            复制
+                            {t('copyId')}
                           </button>
                         </div>
                       </div>
                       <div className="meta-block">
-                        <div className="meta-label">状态</div>
+                        <div className="meta-label">{t('statusLabel')}</div>
                         <div className="meta-value"><span className={`status-badge status-${selectedExp.status}`}>{selectedExp.status}</span></div>
                       </div>
                       <div className="meta-block">
-                        <div className="meta-label">时长</div>
+                        <div className="meta-label">{t('duration')}</div>
                         <div className="meta-value">{formatDuration(selectedExp.start_at || selectedExp.created_at, selectedExp.end_at)}</div>
                       </div>
                       <div className="meta-block">
-                        <div className="meta-label">创建</div>
+                        <div className="meta-label">{t('createdAtShort')}</div>
                         <div className="meta-value">{formatTime(selectedExp.created_at)}</div>
                       </div>
                       <div className="meta-block">
-                        <div className="meta-label">开始</div>
+                        <div className="meta-label">{t('startAt')}</div>
                         <div className="meta-value">{formatTime(selectedExp.start_at)}</div>
                       </div>
                       <div className="meta-block">
-                        <div className="meta-label">结束</div>
+                        <div className="meta-label">{t('endAt')}</div>
                         <div className="meta-value">{formatTime(selectedExp.end_at)}</div>
                       </div>
                     </div>
 
-                    <div className="compact-section-title" style={{ marginTop: 12 }}>变体定义</div>
+                    <div className="compact-section-title" style={{ marginTop: 12 }}>{t('variantDef')}</div>
                     <div className="compact-form-grid">
                       {(selectedExp.variants || []).map((v, idx) => {
                         const info = getCreativeInfo(v.creative_id) || {
@@ -380,20 +384,20 @@ const ExperimentsPage: React.FC = () => {
                           <div key={idx} className="compact-card" style={{ padding: 10, border: '1px solid #f0f0f0' }}>
                             <div style={{ display: 'flex', gap: 10 }}>
                               {info?.thumb ? (
-                                <img src={info.thumb} alt="创意" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #eee' }} />
+                                <img src={info.thumb} alt={t('creativeId')} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #eee' }} />
                               ) : (
                                 <div style={{ width: 80, height: 80, borderRadius: 6, border: '1px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 12 }}>
-                                  无图
+                                  -
                                 </div>
                               )}
                               <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 700 }}>{info?.title || info?.product_name || `创意 ${v.creative_id}`}</div>
+                            <div style={{ fontWeight: 700 }}>{info?.title || info?.product_name || `${t('creativeId')} ${v.creative_id}`}</div>
                                 <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>
-                                  创意ID: {v.creative_id} | 权重: {v.weight}
+                                  {t('creativeId')}: {v.creative_id} | {t('weight')}: {v.weight}
                                 </div>
                                 {appliedSP && appliedSP.length > 0 && (
                                   <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                                    卖点：{appliedSP.slice(0, 2).join(' / ')}
+                                    {t('sellingPointsLabel')}：{appliedSP.slice(0, 2).join(' / ')}
                                   </div>
                                 )}
                                 {appliedCTA && (
@@ -414,30 +418,30 @@ const ExperimentsPage: React.FC = () => {
                         </div>
                       ) : metrics && metrics.variants && metrics.variants.length > 0 ? (
                         <>
-                          <div className="compact-section-title" style={{ marginTop: 12 }}>当前指标</div>
+                          <div className="compact-section-title" style={{ marginTop: 12 }}>{t('metricsTitle')}</div>
                           {metricsSummary && metricsSummary.impressions > 0 ? (
                             <div className="metrics-grid">
                               <div className="metric-card">
-                                <div className="metric-label">总曝光</div>
+                                <div className="metric-label">{t('totalImpressions')}</div>
                                 <div className="metric-value">{metricsSummary.impressions}</div>
                               </div>
                               <div className="metric-card">
-                                <div className="metric-label">总点击</div>
+                                <div className="metric-label">{t('totalClicks')}</div>
                                 <div className="metric-value">{metricsSummary.clicks}</div>
                               </div>
                               <div className="metric-card">
-                                <div className="metric-label">平均CTR</div>
+                                <div className="metric-label">{t('avgCtr')}</div>
                                 <div className="metric-value">{(metricsSummary.avgCtr * 100).toFixed(2)}%</div>
                               </div>
                               <div className="metric-card highlight">
-                                <div className="metric-label">最佳CTR</div>
+                                <div className="metric-label">{t('bestCtr')}</div>
                                 <div className="metric-value">{(metricsSummary.best.ctr * 100).toFixed(2)}%</div>
-                                <div className="metric-sub">创意 {metricsSummary.best.creative_id}</div>
+                                <div className="metric-sub">Creative {metricsSummary.best.creative_id}</div>
                               </div>
                             </div>
                           ) : (
                             <div style={{ background: '#fffbe6', border: '1px solid #ffe58f', color: '#ad6800', borderRadius: 8, padding: 10, fontSize: 13 }}>
-                              当前实验暂无有效曝光/点击数据，可能是刚创建或未投放。稍后刷新即可查看。
+                              {t('noDataNotice')}
                             </div>
                           )}
                           <div className="compact-table-wrapper">
@@ -445,10 +449,10 @@ const ExperimentsPage: React.FC = () => {
                               <thead>
                                 <tr>
                                   <th>Creative ID</th>
-                                  <th>曝光</th>
-                                  <th>点击</th>
+                                  <th>{t('totalImpressions')}</th>
+                                  <th>{t('totalClicks')}</th>
                                   <th>CTR</th>
-                                  <th>对比</th>
+                                  <th>{t('status')}</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -462,7 +466,7 @@ const ExperimentsPage: React.FC = () => {
                                       <td>{v.clicks}</td>
                                       <td>{(v.ctr * 100).toFixed(2)}%</td>
                                       <td style={{ color: diff >= 0 ? '#52c41a' : '#ff7875' }}>
-                                        {diff >= 0 ? '高于' : '低于'}均值 {diffText}
+                                        {diff >= 0 ? t('aboveAvg') : t('belowAvg')} {diffText}
                                       </td>
                                     </tr>
                                   );
@@ -473,7 +477,7 @@ const ExperimentsPage: React.FC = () => {
                         </>
                       ) : (
                         <div style={{ background: '#fffbe6', border: '1px solid #ffe58f', color: '#ad6800', borderRadius: 8, padding: 10, fontSize: 13 }}>
-                          当前实验暂无指标数据，可能尚未产生曝光/点击。
+                          {t('noMetrics')}
                         </div>
                       )}
                   </div>

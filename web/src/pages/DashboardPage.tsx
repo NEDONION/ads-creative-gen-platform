@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { creativeAPI, experimentAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
+import LanguageSwitch from '../components/LanguageSwitch';
+import { useI18n } from '../i18n';
 
 // 统计卡片组件
 interface StatCardProps {
@@ -156,6 +158,7 @@ const getExperimentStatusText = (status?: string) => {
 // 主 Dashboard 组件
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [totalAssets, setTotalAssets] = useState(0);
   const [totalTasks, setTotalTasks] = useState(0);
   const [totalExperiments, setTotalExperiments] = useState(0);
@@ -259,10 +262,11 @@ const DashboardPage: React.FC = () => {
 
       <div className="main-content">
         <div className="header">
-          <h1 className="page-title">仪表盘</h1>
+          <h1 className="page-title">{t('headerDashboard')}</h1>
           <div className="user-info">
+            <LanguageSwitch />
             <div className="avatar">A</div>
-            <span>管理员</span>
+            <span>{t('admin')}</span>
           </div>
         </div>
 
@@ -273,21 +277,21 @@ const DashboardPage: React.FC = () => {
               <StatCard
                 icon="📊"
                 value={totalAssets}
-                label="总素材数"
+                label={t('statAssets')}
                 trend={{ value: '+12%', isPositive: true }}
                 loading={loading}
               />
               <StatCard
                 icon="📋"
                 value={totalTasks}
-                label="总任务数"
+                label={t('statTasks')}
                 trend={{ value: '+8%', isPositive: true }}
                 loading={loading}
               />
               <StatCard
                 icon="🧪"
                 value={totalExperiments}
-                label="总实验数"
+                label={t('statExperiments')}
                 loading={loading}
               />
             </div>
@@ -295,57 +299,57 @@ const DashboardPage: React.FC = () => {
             {/* Info Cards Row */}
             <div className="info-grid">
               <InfoCard
-                title="欢迎使用"
+                title={t('welcomeTitle')}
                 icon="👋"
                 action={{
-                  label: '立即开始',
+                  label: t('welcomeAction'),
                   onClick: () => navigate('/creative'),
                 }}
               >
-                <p>开始创建您的第一个广告创意，体验 AI 驱动的高效创作流程。</p>
-                <p>推荐流程：上传/填写商品信息 → 生成文案与图片 → 在实验中配置变体 → 观察指标与复盘。</p>
-                <p style={{ color: '#8c8c8c', fontSize: 12 }}>支持 CTA/卖点覆盖、商品名过滤、任务详情查看提示词/风格。</p>
+                <p>{t('welcomeP1')}</p>
+                <p>{t('welcomeP2')}</p>
+                <p style={{ color: '#8c8c8c', fontSize: 12 }}>{t('welcomeHint')}</p>
               </InfoCard>
 
-              <InfoCard title="关于平台" icon="💡">
-                <p>AI 驱动的广告创意生成平台，整合文案、图像生成与实验投放。</p>
+              <InfoCard title={t('aboutTitle')} icon="💡">
+                <p>{t('aboutParagraph')}</p>
                 <ul className="feature-list">
-                  <li>✓ 创意生成：多格式/风格自定义，提示词溯源</li>
-                  <li>✓ 任务与素材：查看变体提示词/风格，分组展示</li>
-                  <li>✓ 实验：独立的列表与创建页，CTA/卖点可覆盖，支持激活/停止与指标对比</li>
-                  <li>✓ 调用链路：追踪 Tongyi 关键步骤，来源为商品名</li>
+                  <li>✓ {t('feature1')}</li>
+                  <li>✓ {t('feature2')}</li>
+                  <li>✓ {t('feature3')}</li>
+                  <li>✓ {t('feature4')}</li>
                 </ul>
-                <p style={{ color: '#8c8c8c', fontSize: 12 }}>Tip：有新增字段时可通过设置 AUTO_MIGRATE=true 启动自动迁移。</p>
+                <p style={{ color: '#8c8c8c', fontSize: 12 }}>{t('migrateTip')}</p>
               </InfoCard>
             </div>
 
             {/* Recent Activity */}
             <div className="activity-card">
               <div className="activity-header">
-                <h3 className="activity-title">最近活动</h3>
+                <h3 className="activity-title">{t('recentActivity')}</h3>
                 <a href="/tasks" className="activity-link">
-                  查看全部 →
+                  {t('viewAll')} →
                 </a>
               </div>
               <div className="activity-list">
                 {activityLoading ? (
                   <div className="compact-loading">
                     <div className="loading"></div>
-                    <div className="compact-loading-text">加载中...</div>
+                    <div className="compact-loading-text">{t('loading')}</div>
                   </div>
                 ) : activityError ? (
                   <div className="compact-alert compact-alert-error">
                     <i className="fas fa-exclamation-circle"></i>
-                    <span>{activityError}</span>
+                    <span>{t('activityError')}</span>
                     <button className="compact-btn compact-btn-text compact-btn-xs" style={{ marginLeft: 8 }} onClick={loadActivities}>
-                      重试
+                      {t('retry')}
                     </button>
                   </div>
                 ) : activities.length === 0 ? (
                   <div className="compact-empty">
                     <i className="fas fa-stream"></i>
-                    <div className="compact-empty-text">暂无活动</div>
-                    <div className="compact-empty-hint">完成任务或生成素材后将在这里显示</div>
+                    <div className="compact-empty-text">{t('noActivity')}</div>
+                    <div className="compact-empty-hint">{t('noActivityHint')}</div>
                   </div>
                 ) : (
                   <>
@@ -357,7 +361,7 @@ const DashboardPage: React.FC = () => {
                         time={activity.time}
                       />
                     ))}
-                    <div style={{ fontSize: 12, color: '#8c8c8c', padding: '6px 2px' }}>仅显示最近 5 条，更多请前往任务/素材/实验列表查看。</div>
+                    <div style={{ fontSize: 12, color: '#8c8c8c', padding: '6px 2px' }}>{t('activityMore')}</div>
                   </>
                 )}
               </div>
