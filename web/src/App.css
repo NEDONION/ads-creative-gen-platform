@@ -2097,6 +2097,19 @@ textarea.form-control {
   padding: 6px 0;
 }
 
+.create-page-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .create-page-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Responsive Design for Compact Pages */
 
 /* Tablet (≤1024px) */

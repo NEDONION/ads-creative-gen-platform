@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { experimentAPI, creativeAPI } from '../services/api';
@@ -121,6 +121,15 @@ const ExperimentCreatePage: React.FC = () => {
   const filteredCreativeOptions = productName
     ? creativeOptions.filter((opt) => (opt.product_name || '').trim() === productName.trim())
     : creativeOptions;
+
+  const summary = useMemo(() => {
+    const selectedCreatives = variants.map((v) => v.creative_id).filter(Boolean) as (string | number)[];
+    return {
+      productName: productName || t('productLabel'),
+      variantCount: variants.length,
+      creatives: selectedCreatives,
+    };
+  }, [variants, productName, t]);
 
   return (
     <div className="app">
@@ -335,10 +344,41 @@ const ExperimentCreatePage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            <div className="compact-card">
+              <div className="compact-card-header">
+                <h3 className="compact-card-title">{t('currentConfig')}</h3>
+                <div className="compact-card-hint">{t('variantConfigLabel')}</div>
+              </div>
+              <div className="compact-card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
+                <div className="meta-block">
+                  <div className="meta-label">{t('productLabel')}</div>
+                  <div className="meta-value">{summary.productName || t('notFilled')}</div>
+                </div>
+                <div className="meta-block">
+                  <div className="meta-label">{t('variantTitle')}</div>
+                  <div className="meta-value">{summary.variantCount}</div>
+                </div>
+                <div className="meta-block" style={{ gridColumn: '1 / -1' }}>
+                  <div className="meta-label">{t('creativeId')}</div>
+                  <div className="meta-value" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {(summary.creatives as (string | number)[]).length === 0 ? (
+                        <span style={{ color: '#999' }}>{t('selectCreative')}</span>
+                      ) : (
+                        (summary.creatives as (string | number)[]).map((c, i) => (
+                          <code key={`${c}-${i}`} className="compact-code">
+                            {c}
+                          </code>
+                        ))
+                      )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+      </div>
   );
 };
 
