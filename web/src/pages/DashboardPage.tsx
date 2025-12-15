@@ -242,7 +242,7 @@ const DashboardPage: React.FC = () => {
       const merged = [...taskActivities, ...assetActivities, ...experimentActivities]
         .filter((item) => item.timestamp > 0)
         .sort((a, b) => b.timestamp - a.timestamp)
-        .slice(0, 10);
+        .slice(0, 5);
 
       setActivities(merged);
     } catch (err) {
@@ -303,15 +303,19 @@ const DashboardPage: React.FC = () => {
                 }}
               >
                 <p>开始创建您的第一个广告创意，体验 AI 驱动的高效创作流程。</p>
+                <p>推荐流程：上传/填写商品信息 → 生成文案与图片 → 在实验中配置变体 → 观察指标与复盘。</p>
+                <p style={{ color: '#8c8c8c', fontSize: 12 }}>支持 CTA/卖点覆盖、商品名过滤、任务详情查看提示词/风格。</p>
               </InfoCard>
 
               <InfoCard title="关于平台" icon="💡">
-                <p>AI 驱动的广告创意生成平台</p>
+                <p>AI 驱动的广告创意生成平台，整合文案、图像生成与实验投放。</p>
                 <ul className="feature-list">
-                  <li>✓ 多尺寸智能生成</li>
-                  <li>✓ CTR 预测与排序</li>
-                  <li>✓ 云端存储管理</li>
+                  <li>✓ 创意生成：多格式/风格自定义，提示词溯源</li>
+                  <li>✓ 任务与素材：查看变体提示词/风格，分组展示</li>
+                  <li>✓ 实验：独立的列表与创建页，CTA/卖点可覆盖，支持激活/停止与指标对比</li>
+                  <li>✓ 调用链路：追踪 Tongyi 关键步骤，来源为商品名</li>
                 </ul>
+                <p style={{ color: '#8c8c8c', fontSize: 12 }}>Tip：有新增字段时可通过设置 AUTO_MIGRATE=true 启动自动迁移。</p>
               </InfoCard>
             </div>
 
@@ -344,14 +348,17 @@ const DashboardPage: React.FC = () => {
                     <div className="compact-empty-hint">完成任务或生成素材后将在这里显示</div>
                   </div>
                 ) : (
-                  activities.map((activity) => (
-                    <ActivityItem
-                      key={`${activity.type}-${activity.id}-${activity.timestamp}`}
-                      type={activity.type}
-                      message={activity.message}
-                      time={activity.time}
-                    />
-                  ))
+                  <>
+                    {activities.map((activity) => (
+                      <ActivityItem
+                        key={`${activity.type}-${activity.id}-${activity.timestamp}`}
+                        type={activity.type}
+                        message={activity.message}
+                        time={activity.time}
+                      />
+                    ))}
+                    <div style={{ fontSize: 12, color: '#8c8c8c', padding: '6px 2px' }}>仅显示最近 5 条，更多请前往任务/素材/实验列表查看。</div>
+                  </>
                 )}
               </div>
             </div>
