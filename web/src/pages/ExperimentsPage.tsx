@@ -11,6 +11,7 @@ const ExperimentsPage: React.FC = () => {
   const [experimentList, setExperimentList] = useState<Experiment[]>([]);
   const [listLoading, setListLoading] = useState(false);
   const [selectedExp, setSelectedExp] = useState<Experiment | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(false);
 
   useEffect(() => {
     loadOptions();
@@ -81,10 +82,23 @@ const ExperimentsPage: React.FC = () => {
   const handleActivate = async (id?: string) => {
     const targetId = id || selectedExp?.experiment_id;
     if (!targetId) return;
+    // 已停止的实验不允许重新激活
+    const targetExp = experimentList.find((e) => e.experiment_id === targetId);
+    if (targetExp?.status === 'archived') {
+      setMessage('已停止的实验无法再次激活');
+      return;
+    }
     try {
       const res = await experimentAPI.updateStatus(targetId, 'active');
       if (res.code === 0) {
         setMessage('已激活实验');
+        const now = new Date().toISOString();
+        setSelectedExp((prev) => (prev && prev.experiment_id === targetId ? { ...prev, status: 'active', start_at: prev.start_at || now } : prev));
+        setExperimentList((prev) =>
+          prev.map((exp) =>
+            exp.experiment_id === targetId ? { ...exp, status: 'active', start_at: exp.start_at || now } : exp
+          )
+        );
         loadExperiments();
       } else {
         setMessage(res.message || '激活失败');
@@ -101,6 +115,13 @@ const ExperimentsPage: React.FC = () => {
       const res = await experimentAPI.updateStatus(targetId, 'archived');
       if (res.code === 0) {
         setMessage('已停止实验');
+        const now = new Date().toISOString();
+        setSelectedExp((prev) => (prev && prev.experiment_id === targetId ? { ...prev, status: 'archived', end_at: now } : prev));
+        setExperimentList((prev) =>
+          prev.map((exp) =>
+            exp.experiment_id === targetId ? { ...exp, status: 'archived', end_at: now } : exp
+          )
+        );
         loadExperiments();
       } else {
         setMessage(res.message || '停止失败');
@@ -111,9 +132,11 @@ const ExperimentsPage: React.FC = () => {
   };
 
   const loadMetrics = async (id?: string) => {
+    setMetricsLoading(true);
     const targetId = id || selectedExp?.experiment_id;
     if (!targetId) {
       setMessage('请先选择实验');
+      setMetricsLoading(false);
       return;
     }
     try {
@@ -125,6 +148,8 @@ const ExperimentsPage: React.FC = () => {
       }
     } catch (err) {
       setMessage('获取结果失败: ' + (err as Error).message);
+    } finally {
+      setMetricsLoading(false);
     }
   };
 
@@ -175,6 +200,15 @@ const ExperimentsPage: React.FC = () => {
     setMessage(`已选择实验 ${id}`);
     loadMetrics(id);
   };
+
+  const metricsSummary = (() => {
+    if (!metrics || !metrics.variants || metrics.variants.length === 0) return null;
+    const impressions = metrics.variants.reduce((sum, v) => sum + v.impressions, 0);
+    const clicks = metrics.variants.reduce((sum, v) => sum + v.clicks, 0);
+    const avgCtr = impressions > 0 ? clicks / impressions : 0;
+    const best = [...metrics.variants].sort((a, b) => b.ctr - a.ctr)[0];
+    return { impressions, clicks, avgCtr, best };
+  })();
 
   return (
     <div className="app">
@@ -235,8 +269,10 @@ const ExperimentsPage: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {experimentList.map((exp) => (
-                          <tr key={exp.experiment_id}>
+                        {experimentList.map((exp) => {
+                          const isSelected = selectedExp?.experiment_id === exp.experiment_id;
+                          return (
+                          <tr key={exp.experiment_id} className={isSelected ? 'table-row-selected' : ''}>
                             <td>{exp.name}</td>
                             <td>{exp.product_name || '-'}</td>
                             <td>
@@ -257,7 +293,8 @@ const ExperimentsPage: React.FC = () => {
                               </button>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -274,9 +311,9 @@ const ExperimentsPage: React.FC = () => {
                       <button
                         className="compact-btn compact-btn-primary compact-btn-xs"
                         onClick={() => handleActivate(selectedExp.experiment_id)}
-                        disabled={selectedExp.status === 'active'}
+                        disabled={selectedExp.status === 'active' || selectedExp.status === 'archived'}
                       >
-                        {selectedExp.status === 'active' ? '已激活' : '激活'}
+                        {selectedExp.status === 'archived' ? '已停止' : selectedExp.status === 'active' ? '已激活' : '激活'}
                       </button>
                       <button
                         className="compact-btn compact-btn-danger compact-btn-xs"
@@ -286,8 +323,8 @@ const ExperimentsPage: React.FC = () => {
                       >
                         {selectedExp.status === 'archived' ? '已停止' : '停止'}
                       </button>
-                      <button className="compact-btn compact-btn-outline compact-btn-xs" onClick={() => loadMetrics(selectedExp.experiment_id)}>
-                        刷新指标
+                      <button className="compact-btn compact-btn-outline compact-btn-xs" onClick={() => loadMetrics(selectedExp.experiment_id)} disabled={metricsLoading}>
+                        {metricsLoading ? '刷新中...' : '刷新指标'}
                       </button>
                       <button className="compact-btn compact-btn-text compact-btn-xs" onClick={() => { setSelectedExp(null); setMetrics(null); }}>
                         收起
@@ -371,33 +408,74 @@ const ExperimentsPage: React.FC = () => {
                       })}
                     </div>
 
-                    {metrics && metrics.variants && (
-                      <>
-                        <div className="compact-section-title" style={{ marginTop: 12 }}>当前指标</div>
-                        <div className="compact-table-wrapper">
-                          <table className="compact-table">
-                            <thead>
-                              <tr>
-                                <th>Creative ID</th>
-                                <th>曝光</th>
-                                <th>点击</th>
-                                <th>CTR</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {(metrics.variants || []).map((v) => (
-                                <tr key={v.creative_id}>
-                                  <td>{v.creative_id}</td>
-                                  <td>{v.impressions}</td>
-                                  <td>{v.clicks}</td>
-                                  <td>{(v.ctr * 100).toFixed(2)}%</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                      {metricsLoading ? (
+                        <div className="compact-loading" style={{ padding: 12 }}>
+                          <div className="loading"></div>
                         </div>
-                      </>
-                    )}
+                      ) : metrics && metrics.variants && metrics.variants.length > 0 ? (
+                        <>
+                          <div className="compact-section-title" style={{ marginTop: 12 }}>当前指标</div>
+                          {metricsSummary && metricsSummary.impressions > 0 ? (
+                            <div className="metrics-grid">
+                              <div className="metric-card">
+                                <div className="metric-label">总曝光</div>
+                                <div className="metric-value">{metricsSummary.impressions}</div>
+                              </div>
+                              <div className="metric-card">
+                                <div className="metric-label">总点击</div>
+                                <div className="metric-value">{metricsSummary.clicks}</div>
+                              </div>
+                              <div className="metric-card">
+                                <div className="metric-label">平均CTR</div>
+                                <div className="metric-value">{(metricsSummary.avgCtr * 100).toFixed(2)}%</div>
+                              </div>
+                              <div className="metric-card highlight">
+                                <div className="metric-label">最佳CTR</div>
+                                <div className="metric-value">{(metricsSummary.best.ctr * 100).toFixed(2)}%</div>
+                                <div className="metric-sub">创意 {metricsSummary.best.creative_id}</div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ background: '#fffbe6', border: '1px solid #ffe58f', color: '#ad6800', borderRadius: 8, padding: 10, fontSize: 13 }}>
+                              当前实验暂无有效曝光/点击数据，可能是刚创建或未投放。稍后刷新即可查看。
+                            </div>
+                          )}
+                          <div className="compact-table-wrapper">
+                            <table className="compact-table">
+                              <thead>
+                                <tr>
+                                  <th>Creative ID</th>
+                                  <th>曝光</th>
+                                  <th>点击</th>
+                                  <th>CTR</th>
+                                  <th>对比</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(metrics.variants || []).map((v) => {
+                                  const diff = metricsSummary ? v.ctr - metricsSummary.avgCtr : 0;
+                                  const diffText = `${(diff * 100).toFixed(2)}%`;
+                                  return (
+                                    <tr key={v.creative_id}>
+                                      <td>{v.creative_id}</td>
+                                      <td>{v.impressions}</td>
+                                      <td>{v.clicks}</td>
+                                      <td>{(v.ctr * 100).toFixed(2)}%</td>
+                                      <td style={{ color: diff >= 0 ? '#52c41a' : '#ff7875' }}>
+                                        {diff >= 0 ? '高于' : '低于'}均值 {diffText}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ background: '#fffbe6', border: '1px solid #ffe58f', color: '#ad6800', borderRadius: 8, padding: 10, fontSize: 13 }}>
+                          当前实验暂无指标数据，可能尚未产生曝光/点击。
+                        </div>
+                      )}
                   </div>
                 </div>
               )}

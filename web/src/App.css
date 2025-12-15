@@ -243,6 +243,25 @@ body {
   background: #fafafa;
 }
 
+.table-row-selected td {
+  background: #f2f7ff !important;
+}
+
+.table-row-selected td:first-child {
+  position: relative;
+}
+
+.table-row-selected td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: #1677ff;
+  border-radius: 3px;
+}
+
 /* 状态标签 */
 .status-badge {
   padding: 2px 8px;
@@ -1372,6 +1391,46 @@ textarea.form-control {
   padding: 2px 6px;
   border-radius: 4px;
   color: #666;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.metric-card {
+  background: #f9fafc;
+  border: 1px solid #eff2f5;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metric-card.highlight {
+  border-color: #ffe7ba;
+  background: #fff8e6;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: #8c8c8c;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.metric-sub {
+  font-size: 12px;
+  color: #8c8c8c;
 }
 
 .compact-asset-meta {
