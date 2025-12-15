@@ -14,8 +14,8 @@ func main() {
 	// 加载配置
 	config.LoadConfig()
 
-	// 初始化数据库连接（不执行迁移）
-	database.InitDatabase()
+	// 初始化数据库并自动迁移
+	database.InitializeDatabase()
 	defer database.CloseDB()
 
 	// 设置 Gin 模式

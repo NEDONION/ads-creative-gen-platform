@@ -179,6 +179,8 @@ func (h *CreativeHandler) GetTask(c *gin.Context) {
 		Style:            firstStyle(task.RequestedStyles),
 		CTAText:          task.CTAText,
 		NumVariants:      task.NumVariants,
+		VariantPrompts:   task.VariantPrompts,
+		VariantStyles:    task.VariantStyles,
 	}
 	data.CreatedAt = task.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
 	if task.CompletedAt != nil {
@@ -194,15 +196,17 @@ func (h *CreativeHandler) GetTask(c *gin.Context) {
 	creatives := make([]CreativeData, 0, len(task.Assets))
 	for _, asset := range task.Assets {
 		creatives = append(creatives, CreativeData{
-			ID:            asset.UUID,
-			Format:        asset.Format,
-			ImageURL:      getPublicURL(&asset), // 使用统一的方法获取公共URL
-			Width:         asset.Width,
-			Height:        asset.Height,
-			Title:         asset.Title,
-			ProductName:   asset.ProductName,
-			CTAText:       asset.CTAText,
-			SellingPoints: asset.SellingPoints,
+			ID:               asset.UUID,
+			Format:           asset.Format,
+			ImageURL:         getPublicURL(&asset), // 使用统一的方法获取公共URL
+			Width:            asset.Width,
+			Height:           asset.Height,
+			Title:            asset.Title,
+			ProductName:      asset.ProductName,
+			CTAText:          asset.CTAText,
+			SellingPoints:    asset.SellingPoints,
+			Style:            asset.Style,
+			GenerationPrompt: asset.GenerationPrompt,
 		})
 	}
 	data.Creatives = creatives

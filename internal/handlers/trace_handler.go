@@ -25,8 +25,9 @@ func (h *TraceHandler) ListTraces(c *gin.Context) {
 	status := c.Query("status")
 	modelName := c.Query("model_name")
 	traceID := c.Query("trace_id")
+	productName := c.Query("product_name")
 
-	result, err := h.service.List(page, pageSize, status, modelName, traceID)
+	result, err := h.service.List(page, pageSize, status, modelName, traceID, productName)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Failed to list traces: "+err.Error()))
 		return

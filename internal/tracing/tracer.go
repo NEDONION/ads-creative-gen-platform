@@ -22,8 +22,8 @@ func NewTracer() *Tracer {
 }
 
 // Start 开始一条 trace，返回携带 trace_id 的 context。
-func (t *Tracer) Start(ctx context.Context, modelName, modelVersion, source, inputPreview string) (context.Context, string) {
-	traceID, err := t.svc.StartTrace(modelName, modelVersion, source, inputPreview)
+func (t *Tracer) Start(ctx context.Context, modelName, modelVersion, source, inputPreview, productName string) (context.Context, string) {
+	traceID, err := t.svc.StartTrace(modelName, modelVersion, source, inputPreview, productName)
 	if err != nil {
 		return ctx, ""
 	}

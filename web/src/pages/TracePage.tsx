@@ -21,7 +21,7 @@ const TracePage: React.FC = () => {
   const [selected, setSelected] = useState<TraceItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [filters, setFilters] = useState({ trace_id: '', status: '', model_name: '' });
+  const [filters, setFilters] = useState({ trace_id: '', status: '' });
 
   const loadTraces = async () => {
     setLoading(true);
@@ -29,7 +29,7 @@ const TracePage: React.FC = () => {
       const res = await traceAPI.list({
         trace_id: filters.trace_id || undefined,
         status: filters.status || undefined,
-        model_name: filters.model_name || undefined,
+        product_name: undefined,
       });
       if (res.code === 0 && res.data) {
         setTraces(res.data.traces || []);
@@ -110,13 +110,6 @@ const TracePage: React.FC = () => {
                     placeholder="Trace ID"
                     value={filters.trace_id}
                     onChange={(e) => setFilters((f) => ({ ...f, trace_id: e.target.value }))}
-                  />
-                  <input
-                    className="compact-input"
-                    style={{ width: 140 }}
-                    placeholder="模型名"
-                    value={filters.model_name}
-                    onChange={(e) => setFilters((f) => ({ ...f, model_name: e.target.value }))}
                   />
                   <select
                     className="compact-input"

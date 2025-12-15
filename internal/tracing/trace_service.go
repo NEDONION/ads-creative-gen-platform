@@ -23,7 +23,7 @@ func NewTraceService() *TraceService {
 }
 
 // List traces with filters
-func (s *TraceService) List(page, pageSize int, status, modelName, traceID string) (*TraceListResult, error) {
+func (s *TraceService) List(page, pageSize int, status, modelName, traceID, productName string) (*TraceListResult, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -40,6 +40,9 @@ func (s *TraceService) List(page, pageSize int, status, modelName, traceID strin
 	}
 	if traceID != "" {
 		query = query.Where("trace_id = ?", traceID)
+	}
+	if productName != "" {
+		query = query.Where("product_name = ?", productName)
 	}
 
 	var total int64
@@ -75,12 +78,13 @@ func (s *TraceService) Detail(traceID string) (*models.ModelTrace, error) {
 }
 
 // StartTrace 创建主 trace
-func (s *TraceService) StartTrace(modelName, modelVersion, source, inputPreview string) (string, error) {
+func (s *TraceService) StartTrace(modelName, modelVersion, source, inputPreview, productName string) (string, error) {
 	traceID := uuid.New().String()
 	mt := models.ModelTrace{
 		TraceID:       traceID,
 		ModelName:     modelName,
 		ModelVersion:  modelVersion,
+		ProductName:   productName,
 		Status:        "running",
 		StartAt:       time.Now(),
 		Source:        source,

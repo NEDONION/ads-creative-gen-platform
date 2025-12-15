@@ -116,6 +116,13 @@ const AssetsPage: React.FC = () => {
     return groups;
   }, [assets]);
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
     <div className="app">
       <Sidebar />
@@ -170,43 +177,64 @@ const AssetsPage: React.FC = () => {
                     <h3 className="compact-card-title">按商品/创意分组</h3>
                     <div className="compact-card-hint">点击卡片可查看该商品的所有素材</div>
                   </div>
-                  <div className="compact-card-body" style={{ display: 'grid', gap: 12 }}>
+                  <div className="compact-card-body assets-group-grid">
                     {grouped.map((group) => (
-                      <div key={group.key} className="compact-card" style={{ border: '1px solid #f0f0f0' }}>
-                        <div className="compact-card-header" style={{ borderBottom: '1px solid #f5f5f5' }}>
+                      <div key={group.key} className="assets-group-card">
+                        <div className="group-header">
                           <div>
-                            <h4 className="compact-card-title" style={{ margin: 0 }}>{group.productName}</h4>
-                            {group.ctaText && <div style={{ fontSize: 12, color: '#8c8c8c' }}>CTA：{group.ctaText}</div>}
+                            <div className="group-title">{group.productName}</div>
+                            {group.ctaText && <div className="group-sub">CTA：{group.ctaText}</div>}
                             {group.sellingPoints && group.sellingPoints.length > 0 && (
-                              <div style={{ fontSize: 12, color: '#8c8c8c' }}>卖点：{group.sellingPoints.join('、')}</div>
+                              <div className="group-sub">卖点：{group.sellingPoints.join('、')}</div>
                             )}
                           </div>
-                          <div style={{ fontSize: 12, color: '#8c8c8c' }}>{group.assets.length} 张素材</div>
+                          <div className="group-badge">{group.assets.length} 张</div>
                         </div>
-                        <div className="compact-assets-grid">
+                        <div className="compact-assets-vertical">
                           {group.assets.map((asset) => (
-                            <div key={asset.id} className="compact-asset-card">
-                              <div className="compact-asset-image-wrapper">
-                                <img
-                                  src={asset.public_url || asset.image_url}
-                                  alt={asset.id}
-                                  className="compact-asset-image"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src =
-                                      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180" viewBox="0 0 240 180"><rect width="240" height="180" fill="%23f5f5f5"/><text x="120" y="90" font-family="Arial" font-size="11" text-anchor="middle" fill="%23999">素材图片</text></svg>';
-                                  }}
-                                />
-                              </div>
-                              <div className="compact-asset-info">
-                                <div className="compact-asset-meta">
+                            <div key={asset.id} className="vertical-asset-card">
+                              <div className="vertical-meta">
+                                <div className="meta-left">
                                   <span className="compact-asset-format">{asset.format}</span>
-                                  <span className="compact-asset-size">
-                                    {asset.width}×{asset.height}
-                                  </span>
+                                  <span className="compact-asset-size">{asset.width}×{asset.height}</span>
+                                  <code className="compact-asset-id">{asset.id.substring(0, 8)}...</code>
                                 </div>
-                                <div className="compact-asset-id" title={asset.id}>
-                                  {asset.id.substring(0, 8)}...
+                                <div className="meta-right">
+                                  {asset.style && <span className="summary-chip">风格: {asset.style}</span>}
+                                </div>
+                              </div>
+                              <div className="vertical-body">
+                                <div className="compact-asset-image-wrapper tall-vertical">
+                                  <img
+                                    src={asset.public_url || asset.image_url}
+                                    alt={asset.id}
+                                    className="compact-asset-image"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src =
+                                        'data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"280\" height=\"320\" viewBox=\"0 0 280 320\"><rect width=\"280\" height=\"320\" fill=\"%23f5f5f5\"/><text x=\"140\" y=\"160\" font-family=\"Arial\" font-size=\"11\" text-anchor=\"middle\" fill=\"%23999\">素材图片</text></svg>';
+                                    }}
+                                  />
+                                </div>
+                                <div className="compact-asset-info long vertical-info">
+                                  {asset.title && (
+                                    <div className="info-row">
+                                      <span className="label">标题</span>
+                                      <span className="value">{asset.title}</span>
+                                    </div>
+                                  )}
+                                  {asset.cta_text && (
+                                    <div className="info-row">
+                                      <span className="label">CTA</span>
+                                      <span className="value">{asset.cta_text}</span>
+                                    </div>
+                                  )}
+                                  {asset.selling_points && asset.selling_points.length > 0 && (
+                                    <div className="info-row">
+                                      <span className="label">卖点</span>
+                                      <span className="value">{asset.selling_points.join(' / ')}</span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>

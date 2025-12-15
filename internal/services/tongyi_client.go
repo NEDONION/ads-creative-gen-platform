@@ -68,12 +68,12 @@ type ImageGenResponse struct {
 }
 
 // GenerateImage 生成图片，traceID 可选（空则新建）
-func (c *TongyiClient) GenerateImage(ctx context.Context, prompt string, size string, n int, source string, traceID string) (*ImageGenResponse, string, error) {
+func (c *TongyiClient) GenerateImage(ctx context.Context, prompt string, size string, n int, source string, traceID string, productName string) (*ImageGenResponse, string, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	if traceID == "" {
-		ctx, traceID = c.tracer.Start(ctx, "tongyi-image", config.TongyiConfig.ImageModel, source, prompt)
+		ctx, traceID = c.tracer.Start(ctx, "tongyi-image", config.TongyiConfig.ImageModel, productName, prompt, productName)
 	} else {
 		ctx = context.WithValue(ctx, tracing.CtxKeyTraceID, traceID)
 	}
@@ -130,12 +130,12 @@ func (c *TongyiClient) GenerateImage(ctx context.Context, prompt string, size st
 }
 
 // GenerateImageWithProduct 带商品图生成，traceID 可选（空则新建）
-func (c *TongyiClient) GenerateImageWithProduct(ctx context.Context, prompt string, productImageURL string, size string, n int, source string, traceID string) (*ImageGenResponse, string, error) {
+func (c *TongyiClient) GenerateImageWithProduct(ctx context.Context, prompt string, productImageURL string, size string, n int, source string, traceID string, productName string) (*ImageGenResponse, string, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	if traceID == "" {
-		ctx, traceID = c.tracer.Start(ctx, "tongyi-image", config.TongyiConfig.ImageModel, source, prompt)
+		ctx, traceID = c.tracer.Start(ctx, "tongyi-image", config.TongyiConfig.ImageModel, productName, prompt, productName)
 	} else {
 		ctx = context.WithValue(ctx, tracing.CtxKeyTraceID, traceID)
 	}
@@ -248,7 +248,7 @@ func (c *TongyiClient) QueryTask(ctx context.Context, traceID string, taskID str
 	}
 	if traceID == "" {
 		// 若未传 traceID，仍创建但建议上层复用同一 trace
-		ctx, traceID = c.tracer.Start(ctx, "tongyi-image", config.TongyiConfig.ImageModel, source, taskID)
+		ctx, traceID = c.tracer.Start(ctx, "tongyi-image", config.TongyiConfig.ImageModel, source, taskID, "")
 	} else {
 		ctx = context.WithValue(ctx, tracing.CtxKeyTraceID, traceID)
 	}
@@ -263,19 +263,16 @@ func (c *TongyiClient) QueryTask(ctx context.Context, traceID string, taskID str
 
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
-		c.tracer.Step(ctx, "query_task", "tongyi-task", "failed", taskID, "", err.Error(), time.Now(), time.Now())
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		c.tracer.Step(ctx, "query_task", "tongyi-task", "failed", taskID, "", err.Error(), time.Now(), time.Now())
 		return nil, fmt.Errorf("read response failed: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		c.tracer.Step(ctx, "query_task", "tongyi-task", "failed", taskID, string(respBody), fmt.Sprintf("status %d", resp.StatusCode), time.Now(), time.Now())
 		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(respBody))
 	}
 

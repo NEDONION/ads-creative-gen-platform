@@ -96,21 +96,25 @@ type TaskDetailData struct {
 	NumVariants      int            `json:"num_variants,omitempty"`
 	CreatedAt        string         `json:"created_at,omitempty"`
 	CompletedAt      string         `json:"completed_at,omitempty"`
+	VariantPrompts   []string       `json:"variant_prompts,omitempty"`
+	VariantStyles    []string       `json:"variant_styles,omitempty"`
 }
 
 // CreativeData 创意数据
 type CreativeData struct {
-	ID            string   `json:"id"`
-	Format        string   `json:"format"`
-	ImageURL      string   `json:"image_url"`
-	Width         int      `json:"width"`
-	Height        int      `json:"height"`
-	Score         float64  `json:"score,omitempty"`
-	Rank          int      `json:"rank,omitempty"`
-	Title         string   `json:"title,omitempty"`
-	ProductName   string   `json:"product_name,omitempty"`
-	CTAText       string   `json:"cta_text,omitempty"`
-	SellingPoints []string `json:"selling_points,omitempty"`
+	ID               string   `json:"id"`
+	Format           string   `json:"format"`
+	ImageURL         string   `json:"image_url"`
+	Width            int      `json:"width"`
+	Height           int      `json:"height"`
+	Score            float64  `json:"score,omitempty"`
+	Rank             int      `json:"rank,omitempty"`
+	Title            string   `json:"title,omitempty"`
+	ProductName      string   `json:"product_name,omitempty"`
+	CTAText          string   `json:"cta_text,omitempty"`
+	SellingPoints    []string `json:"selling_points,omitempty"`
+	Style            string   `json:"style,omitempty"`
+	GenerationPrompt string   `json:"generation_prompt,omitempty"`
 }
 
 // Response 工具函数

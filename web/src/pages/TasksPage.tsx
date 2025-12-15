@@ -12,6 +12,7 @@ const TasksPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<TaskDetailData | null>(null);
   const [showDetail, setShowDetail] = useState(false);
+  const [detailRefreshing, setDetailRefreshing] = useState(false);
   const pageSize = 15;
 
   useEffect(() => {
@@ -43,6 +44,7 @@ const TasksPage: React.FC = () => {
   };
 
   const viewTask = async (taskId: string) => {
+    setDetailRefreshing(true);
     try {
       const response = await creativeAPI.getTask(taskId);
       if (response.code === 0 && response.data) {
@@ -55,6 +57,7 @@ const TasksPage: React.FC = () => {
       alert('获取任务详情失败: ' + (err as Error).message);
       console.error('Get task detail error:', err);
     }
+    setDetailRefreshing(false);
   };
 
   const closeTaskDetail = () => {
@@ -276,11 +279,19 @@ const TasksPage: React.FC = () => {
                       <span>返回列表</span>
                     </button>
                   </div>
+                  <div className="compact-toolbar-right">
+                    {selectedTask && (
+                      <button className="compact-btn compact-btn-outline compact-btn-sm" onClick={() => viewTask(selectedTask.task_id)} disabled={detailRefreshing}>
+                        <i className="fas fa-sync"></i>
+                        <span>{detailRefreshing ? '刷新中...' : '刷新详情'}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {selectedTask && (
-                  <>
-                    <div className="compact-detail-grid">
+                    {selectedTask && (
+                      <>
+                        <div className="compact-detail-grid">
                         <div className="compact-detail-item">
                           <div className="compact-detail-label">标题</div>
                           <div className="compact-detail-value">{selectedTask.title}</div>
@@ -321,6 +332,31 @@ const TasksPage: React.FC = () => {
                           </div>
                         </div>
                       </div>
+                      {selectedTask.variant_prompts && selectedTask.variant_prompts.length > 0 && (
+                        <div className="compact-detail-item" style={{ gridColumn: '1 / -1' }}>
+                          <div className="compact-detail-label">变体配置</div>
+                          <div className="compact-detail-value">
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+                              {selectedTask.variant_prompts.map((p, idx) => {
+                                const style = selectedTask.variant_styles && selectedTask.variant_styles[idx];
+                                const promptText = p || '（生成时自动拼接）';
+                                const shortPrompt = promptText.length > 80 ? `${promptText.slice(0, 80)}...` : promptText;
+                                return (
+                                  <div key={idx} className="compact-card" style={{ padding: 10, border: '1px solid #e8e8e8', background: '#fafafa' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                      <div style={{ fontWeight: 700 }}>变体 {idx + 1}</div>
+                                      {style && <span className="compact-badge" style={{ background: '#f0f5ff', color: '#1d39c4' }}>风格：{style}</span>}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: '#555', lineHeight: 1.5 }} title={promptText}>
+                                      提示词：{shortPrompt}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div className="compact-detail-item">
                         <div className="compact-detail-label">创建时间</div>
                         <div className="compact-detail-value">{formatDate(selectedTask.created_at || '')}</div>
@@ -351,31 +387,49 @@ const TasksPage: React.FC = () => {
                         <div className="compact-section-title">
                           生成素材 ({selectedTask.creatives.length})
                         </div>
-                        <div className="compact-assets-grid">
+                        <div className="task-assets-grid">
                           {selectedTask.creatives.map((creative) => (
-                            <div key={creative.id} className="compact-asset-card">
-                              <div className="compact-asset-image-wrapper">
-                                <img
-                                  src={creative.image_url}
-                                  alt={creative.id}
-                                  className="compact-asset-image"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src =
-                                      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180" viewBox="0 0 240 180"><rect width="240" height="180" fill="%23f5f5f5"/><text x="120" y="90" font-family="Arial" font-size="11" text-anchor="middle" fill="%23999">素材图片</text></svg>';
-                                  }}
-                                />
-                              </div>
-                              <div className="compact-asset-info">
-                                <div className="compact-asset-meta">
+                            <div key={creative.id} className="vertical-asset-card">
+                              <div className="vertical-meta">
+                                <div className="meta-left">
                                   <span className="compact-asset-format">{creative.format}</span>
-                                  <span className="compact-asset-size">
-                                    {creative.width}×{creative.height}
-                                  </span>
+                                  <span className="compact-asset-size">{creative.width}×{creative.height}</span>
+                                  <code className="compact-asset-id">{creative.id.substring(0, 8)}...</code>
                                 </div>
-                                <div className="compact-asset-id" title={creative.id}>
-                                  {creative.id.substring(0, 8)}...
+                                <div className="meta-right">
+                                  {creative.style && <span className="summary-chip">风格: {creative.style}</span>}
+                                  {creative.generation_prompt && <span className="summary-chip">提示词已设置</span>}
                                 </div>
+                              </div>
+                              <div className="vertical-body">
+                                <div className="compact-asset-image-wrapper tall-vertical">
+                                  <img
+                                    src={creative.image_url}
+                                    alt={creative.id}
+                                    className="compact-asset-image"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src =
+                                        'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="280" height="320" viewBox="0 0 280 320"><rect width="280" height="320" fill="%23f5f5f5"/><text x=\"140\" y=\"160\" font-family=\"Arial\" font-size=\"11\" text-anchor=\"middle\" fill=\"%23999\">素材图片</text></svg>';
+                                    }}
+                                  />
+                                </div>
+                                {(creative.style || creative.generation_prompt) && (
+                                  <div className="compact-asset-info long vertical-info">
+                                    {creative.style && (
+                                      <div className="info-row">
+                                        <span className="label">风格</span>
+                                        <span className="value">{creative.style}</span>
+                                      </div>
+                                    )}
+                                    {creative.generation_prompt && (
+                                      <div className="info-row">
+                                        <span className="label">提示词</span>
+                                        <span className="value">{creative.generation_prompt}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}

@@ -82,7 +82,7 @@ func (c *QwenClient) GenerateCopywriting(productName string, language string) (*
 	}
 
 	ctx := context.Background()
-	ctx, _ = c.tracer.Start(ctx, "qwen-llm", c.model, productName, fmt.Sprintf("%s|%s", productName, lang))
+	ctx, _ = c.tracer.Start(ctx, "qwen-llm", c.model, productName, fmt.Sprintf("%s|%s", productName, lang), productName)
 
 	req := CopywritingRequest{
 		Model: c.model,
@@ -165,10 +165,10 @@ Return ONLY valid JSON in the following shape:
 }
 
 Rules:
-- Language: %s
+- Target language: %s (always output CTA and selling points in this language, even if product name is another language)
 %s
 %s
-- Do not translate user input; keep the same language across CTA and selling points
+- Keep CTA and selling points consistent in the target language
 - Strictly output JSON only, no extra text`, productName, langName, ctaRule, spRule)
 }
 
@@ -193,12 +193,41 @@ func (c *QwenClient) parseResponse(resp CopywritingResponse, raw string) (*Copyw
 	}
 	result.RawResponse = raw
 
-	if len(result.CTAOptions) != 2 {
-		return nil, fmt.Errorf("unexpected CTA options length: %d", len(result.CTAOptions))
+	// 容错：过滤空白，截断/补齐
+	filteredCTA := make([]string, 0, len(result.CTAOptions))
+	for _, v := range result.CTAOptions {
+		if strings.TrimSpace(v) != "" {
+			filteredCTA = append(filteredCTA, strings.TrimSpace(v))
+		}
 	}
-	if len(result.SellingPointOptions) != 3 {
-		return nil, fmt.Errorf("unexpected selling_point_options length: %d", len(result.SellingPointOptions))
+	if len(filteredCTA) == 0 {
+		return nil, errors.New("no CTA options")
 	}
+	if len(filteredCTA) > 2 {
+		filteredCTA = filteredCTA[:2]
+	}
+	for len(filteredCTA) < 2 {
+		filteredCTA = append(filteredCTA, filteredCTA[len(filteredCTA)-1])
+	}
+
+	filteredSP := make([]string, 0, len(result.SellingPointOptions))
+	for _, v := range result.SellingPointOptions {
+		if strings.TrimSpace(v) != "" {
+			filteredSP = append(filteredSP, strings.TrimSpace(v))
+		}
+	}
+	if len(filteredSP) == 0 {
+		return nil, errors.New("no selling_point_options")
+	}
+	if len(filteredSP) > 3 {
+		filteredSP = filteredSP[:3]
+	}
+	for len(filteredSP) < 3 {
+		filteredSP = append(filteredSP, filteredSP[len(filteredSP)-1])
+	}
+
+	result.CTAOptions = filteredCTA
+	result.SellingPointOptions = filteredSP
 
 	return &result, nil
 }

@@ -126,11 +126,11 @@ func (s *CreativeService) processTask(taskID uint) {
 	if task.ProductImageURL != "" {
 		// 带商品图生成
 		log.Printf("开始带商品图生成: %s", task.ProductImageURL)
-		resp, traceID, err = s.tongyiClient.GenerateImageWithProduct(context.Background(), prompt, task.ProductImageURL, "1024*1024", task.NumVariants, task.UUID, "")
+		resp, traceID, err = s.tongyiClient.GenerateImageWithProduct(context.Background(), prompt, task.ProductImageURL, "1024*1024", task.NumVariants, task.ProductName, "", task.ProductName)
 	} else {
 		// 纯文本生成
 		log.Printf("开始纯文本图像生成")
-		resp, traceID, err = s.tongyiClient.GenerateImage(context.Background(), prompt, "1024*1024", task.NumVariants, task.UUID, "")
+		resp, traceID, err = s.tongyiClient.GenerateImage(context.Background(), prompt, "1024*1024", task.NumVariants, task.ProductName, "", task.ProductName)
 	}
 
 	if err != nil {
@@ -395,9 +395,9 @@ func (s *CreativeService) processTaskPerVariant(task models.CreativeTask) {
 		var traceID string
 
 		if task.ProductImageURL != "" {
-			resp, traceID, err = s.tongyiClient.GenerateImageWithProduct(context.Background(), prompt, task.ProductImageURL, size, 1, task.UUID, "")
+			resp, traceID, err = s.tongyiClient.GenerateImageWithProduct(context.Background(), prompt, task.ProductImageURL, size, 1, task.ProductName, "", task.ProductName)
 		} else {
-			resp, traceID, err = s.tongyiClient.GenerateImage(context.Background(), prompt, size, 1, task.UUID, "")
+			resp, traceID, err = s.tongyiClient.GenerateImage(context.Background(), prompt, size, 1, task.ProductName, "", task.ProductName)
 		}
 		if err != nil {
 			log.Printf("变体 %d 生成失败: %v", idx, err)

@@ -21,6 +21,8 @@ export interface CreativeData {
   product_name?: string;
   cta_text?: string;
   selling_points?: string[];
+  style?: string;
+  generation_prompt?: string;
 }
 
 export interface TaskDetailData {
@@ -39,6 +41,8 @@ export interface TaskDetailData {
   cta_text?: string;
   num_variants?: number;
   product_name?: string;
+  variant_prompts?: string[];
+  variant_styles?: string[];
 }
 
 export interface GenerateRequest {
@@ -234,6 +238,7 @@ export interface TraceItem {
   start_at: string;
   end_at: string;
   source?: string;
+  product_name?: string;
   input_preview?: string;
   output_preview?: string;
   error_message?: string;

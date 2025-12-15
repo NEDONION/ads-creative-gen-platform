@@ -8,6 +8,7 @@ type ModelTrace struct {
 	TraceID       string           `gorm:"type:varchar(64);uniqueIndex;not null" json:"trace_id"`
 	ModelName     string           `gorm:"type:varchar(128);index" json:"model_name"`
 	ModelVersion  string           `gorm:"type:varchar(64)" json:"model_version"`
+	ProductName   string           `gorm:"type:varchar(255);index" json:"product_name,omitempty"`
 	Status        string           `gorm:"type:varchar(16);index" json:"status"` // success/failed/running
 	DurationMs    int              `json:"duration_ms"`
 	StartAt       time.Time        `json:"start_at"`
