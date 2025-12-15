@@ -69,9 +69,25 @@ func LoadConfig() {
 
 // loadAppConfig 加载服务配置
 func loadAppConfig() {
+	// 支持 Railway/Render 等平台的 PORT 环境变量
+	port := getEnv("HTTP_PORT", "")
+	if port == "" {
+		// 如果 HTTP_PORT 未设置，尝试使用 PORT 环境变量（Railway/Render 等平台）
+		if envPort := os.Getenv("PORT"); envPort != "" {
+			port = ":" + envPort
+		} else {
+			port = ":4000"
+		}
+	}
+
+	// 确保端口以冒号开头
+	if port != "" && port[0] != ':' {
+		port = ":" + port
+	}
+
 	AppConfig = &App{
 		AppMode:  getEnv("APP_MODE", "debug"),
-		HttpPort: getEnv("HTTP_PORT", ":4000"),
+		HttpPort: port,
 	}
 	log.Printf("✓ App config loaded (Mode: %s, Port: %s)", AppConfig.AppMode, AppConfig.HttpPort)
 }

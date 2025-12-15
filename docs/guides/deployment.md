@@ -4,13 +4,230 @@
 
 本项目支持以下部署方式:
 
-1. **本地开发部署** - 直接运行
-2. **Docker 部署** - 推荐用于开发和测试
-3. **生产环境部署** - 使用二进制文件
+### 云平台部署（推荐）
+1. **Fly.io 部署** - 推荐，支持全球部署，香港节点
+2. **Render 部署** - 简单易用，自动化部署
+
+### 传统部署
+3. **本地开发部署** - 直接运行
+4. **Docker 部署** - 开发和测试
+5. **生产环境部署** - 自建服务器，使用二进制文件
 
 ---
 
-## 📦 方式一: 本地开发部署
+## ☁️ 方式一: Fly.io 部署（推荐）
+
+### 特点
+- ✅ 支持全球部署（香港节点离中国大陆最近）
+- ✅ 自动 HTTPS
+- ✅ 自动扩容和休眠（节省成本）
+- ✅ Docker 构建，环境一致性好
+
+### 前置要求
+
+1. **安装 Fly.io CLI**
+```bash
+# macOS
+curl -L https://fly.io/install.sh | sh
+# 或使用 Homebrew
+brew install flyctl
+```
+
+2. **登录账号**
+```bash
+flyctl auth login
+```
+
+### 部署步骤
+
+#### 1. 创建应用
+```bash
+# 使用项目中的 fly.toml 配置
+flyctl apps create ads-creative-gen-platform
+```
+
+#### 2. 设置环境变量（敏感信息）
+```bash
+# 数据库密码
+flyctl secrets set DB_PASSWORD="your_password"
+
+# 通义千问 API Key
+flyctl secrets set TONGYI_API_KEY="your_api_key"
+
+# 七牛云配置
+flyctl secrets set QINIU_ACCESS_KEY="your_access_key"
+flyctl secrets set QINIU_SECRET_KEY="your_secret_key"
+flyctl secrets set QINIU_DOMAIN="your_domain"
+flyctl secrets set QINIU_PUBLIC_CLOUD_DOMAIN="your_public_domain"
+```
+
+#### 3. 配置阿里云 RDS 白名单
+```bash
+# 部署后查看应用的出站 IP
+flyctl ips list
+
+# 将这些 IP 添加到阿里云 RDS 白名单
+# 阿里云控制台 → RDS → 数据安全性 → 白名单设置
+```
+
+#### 4. 部署应用
+```bash
+# 首次部署
+flyctl deploy
+
+# 后续更新
+flyctl deploy
+```
+
+#### 5. 访问应用
+```bash
+# 在浏览器中打开
+flyctl open
+
+# 查看应用状态
+flyctl status
+
+# 查看日志
+flyctl logs -f
+```
+
+### 配置说明
+
+**fly.toml 关键配置：**
+```toml
+primary_region = "hkg"  # 香港节点
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true  # 自动休眠节省费用
+  auto_start_machines = true
+  min_machines_running = 0   # 无流量时完全休眠
+```
+
+**可选节点：**
+- `hkg` - 香港（推荐）
+- `nrt` - 东京
+- `sin` - 新加坡
+
+### 常用命令
+
+```bash
+# 查看应用信息
+flyctl status
+
+# SSH 进入容器
+flyctl ssh console
+
+# 扩容
+flyctl scale count 2
+
+# 查看环境变量
+flyctl secrets list
+
+# 删除应用
+flyctl apps destroy ads-creative-gen-platform
+```
+
+---
+
+## ☁️ 方式二: Render 部署
+
+### 特点
+- ✅ 零配置，自动检测项目类型
+- ✅ GitHub 集成，推送自动部署
+- ✅ 免费层可用
+- ✅ 内置 PostgreSQL 数据库（可选）
+
+### 前置要求
+
+- GitHub 账号
+- Render 账号（https://render.com）
+
+### 部署步骤
+
+#### 1. 连接 GitHub 仓库
+
+1. 登录 Render Dashboard
+2. 点击 "New +" → "Web Service"
+3. 连接你的 GitHub 仓库
+
+#### 2. 配置服务
+
+使用项目根目录的 `render.yaml` 自动配置，或手动配置：
+
+```yaml
+Name: ads-creative-gen-platform
+Runtime: Go
+Build Command: cd web && npm install && npm run build && cd .. && go build -o main .
+Start Command: ./main
+```
+
+#### 3. 设置环境变量
+
+在 Render Dashboard → Environment 中添加：
+
+```bash
+# 应用配置
+APP_MODE=release
+HTTP_PORT=:10000
+
+# 数据库配置（使用阿里云 RDS）
+DB_TYPE=postgres
+DB_HOST=pgm-2ze312q98hvmgxjr7o.pg.rds.aliyuncs.com
+DB_PORT=5432
+DB_USER=nedonion
+DB_PASSWORD=your_password
+DB_NAME=ads_creative_gen_platform
+DB_CHARSET=utf8
+
+# AI 服务
+TONGYI_API_KEY=your_api_key
+TONGYI_IMAGE_MODEL=wanx-v1
+TONGYI_LLM_MODEL=qwen-turbo
+
+# 七牛云
+QINIU_ACCESS_KEY=your_access_key
+QINIU_SECRET_KEY=your_secret_key
+QINIU_BUCKET=ads-creative-gen-platform
+QINIU_DOMAIN=your_domain
+QINIU_PUBLIC_CLOUD_DOMAIN=your_public_domain
+QINIU_REGION=cn-south-1
+QINIU_BASE_PATH=s3/
+```
+
+#### 4. 配置阿里云 RDS 白名单
+
+```bash
+# 部署后在 Render Dashboard 查看出站 IP
+# 将 IP 添加到阿里云 RDS 白名单
+```
+
+#### 5. 部署
+
+- 点击 "Create Web Service"
+- Render 会自动构建并部署
+- 部署完成后访问提供的 URL
+
+### 自动部署
+
+Render 支持 GitHub 集成，每次推送代码到主分支会自动触发部署：
+
+```bash
+git add .
+git commit -m "Update features"
+git push origin main
+# Render 自动部署
+```
+
+### 访问地址
+
+```
+https://ads-creative-gen-platform.onrender.com
+```
+
+---
+
+## 📦 方式三: 本地开发部署
 
 ### 前置要求
 
@@ -46,7 +263,7 @@ npm run dev
 
 ---
 
-## 🐳 方式二: Docker 部署 (推荐)
+## 🐳 方式四: Docker 部署
 
 ### 包含服务
 
@@ -108,7 +325,7 @@ docker-compose down -v
 
 ---
 
-## 🏭 方式三: 生产环境部署
+## 🏭 方式五: 生产环境部署（自建服务器）
 
 ### 1. 构建二进制文件
 
