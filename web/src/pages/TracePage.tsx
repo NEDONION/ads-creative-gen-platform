@@ -207,7 +207,7 @@ const TracePage: React.FC = () => {
                                         </div>
                                       </div>
                                       <div className="trace-steps">
-                                        {(selected.steps || []).map((s, idx) => (
+                                        {(selected.steps || []).filter((s) => s.step_name !== 'query_task').map((s, idx) => (
                                           <div key={idx} className="trace-step-card">
                                             <div className="trace-step-header">
                                               <div>
