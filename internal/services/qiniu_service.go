@@ -38,17 +38,23 @@ func NewQiniuService() *QiniuService {
 	}
 
 	// 设置区域
+	// 设置区域（支持全部七牛云 Region）
 	switch config.QiniuConfig.Region {
-	case "cn-east-1", "z0":
+	case "z0", "cn-east-1":
 		cfg.Region = &storage.ZoneHuadong
-	case "cn-north-1", "z1":
+	case "z1", "cn-north-1":
 		cfg.Region = &storage.ZoneHuabei
-	case "cn-south-1", "z2":
+	case "z2", "cn-south-1":
 		cfg.Region = &storage.ZoneHuanan
-	case "us-north-1", "na0":
+	case "na0", "us-north-1":
 		cfg.Region = &storage.ZoneBeimei
+	case "as0", "ap-southeast-1":
+		cfg.Region = &storage.ZoneXinjiapo
+	case "as1":
+		cfg.Region = &storage.ZoneXinjiapo
 	default:
-		cfg.Region = &storage.ZoneHuanan
+		// 强烈建议直接 panic，防止“悄悄传错区”
+		panic(fmt.Sprintf("unsupported Qiniu region: %s", config.QiniuConfig.Region))
 	}
 
 	return &QiniuService{
