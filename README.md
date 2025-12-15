@@ -1,132 +1,134 @@
-# 基于 LLM/VLM/文生图的广告创意全链路生成与实验平台
+# LLM/VLM/Text-to-Image Based Advertising Creative Generation and Experimentation Platform
 
-基于阿里云通义万相和通义千问的智能广告创意生成平台，提供从文案生成到图像创作的完整工作流，支持 A/B 实验、模型追踪和插件化部署。
+**Language / 语言**: English | [简体中文](README_CN.md)
+
+An intelligent advertising creative generation platform based on Alibaba Cloud Tongyi Wanxiang and Tongyi Qianwen, providing a complete workflow from copywriting to image creation, with A/B testing, model tracking, and plugin-based deployment support.
 
 [![Go Version](https://img.shields.io/badge/Go-1.20+-blue.svg)](https://go.dev/)
 [![React Version](https://img.shields.io/badge/React-18.3+-61dafb.svg)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178c6.svg)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-336791.svg)](https://www.postgresql.org/)
 
-## 目录
+## Table of Contents
 
-- [核心功能](#核心功能)
-- [技术架构](#技术架构)
-- [系统架构](#系统架构)
-- [项目结构](#项目结构)
-- [快速开始](#快速开始)
-- [环境配置](#环境配置)
-- [部署指南](#部署指南)
-- [API 接口](#api-接口)
-- [开发指南](#开发指南)
+- [Core Features](#core-features)
+- [Technology Architecture](#technology-architecture)
+- [System Architecture](#system-architecture)
+- [Project Structure](#project-structure)
+- [Quick Start](#quick-start)
+- [Environment Configuration](#environment-configuration)
+- [Deployment Guide](#deployment-guide)
+- [API Reference](#api-reference)
+- [Development Guide](#development-guide)
 
-## 核心功能
+## Core Features
 
-### 1. 智能创意生成工作流
+### 1. Intelligent Creative Generation Workflow
 
-完整的创意生成链路，从文案到图像一站式完成：
+Complete creative generation pipeline from copywriting to images:
 
-- **AI 文案生成** - 基于通义千问自动生成 CTA 和多个卖点候选
-- **文案确认机制** - 用户选择或自定义文案后再启动图像生成
-- **AI 图像生成** - 集成通义万相生成专业广告创意图
-- **多尺寸支持** - 支持 1:1、9:16、16:9 等多种广告尺寸
-- **变体生成** - 一次生成多个创意变体供选择和对比
-- **自定义提示词** - 支持为每个变体定制不同的生成提示词和风格
+- **AI Copywriting** - Automatically generate CTAs and multiple selling point candidates based on Tongyi Qianwen
+- **Copywriting Confirmation** - User selects or customizes copy before triggering image generation
+- **AI Image Generation** - Integrated Tongyi Wanxiang for professional advertising creative images
+- **Multi-size Support** - Supports 1:1, 9:16, 16:9, and other advertising formats
+- **Variant Generation** - Generate multiple creative variants at once for selection and comparison
+- **Custom Prompts** - Support customized generation prompts and styles for each variant
 
-### 2. A/B 实验平台
+### 2. A/B Testing Platform
 
-强大的实验管理和效果评估系统：
+Powerful experiment management and performance evaluation system:
 
-- **实验创建** - 从素材库选择创意创建对比实验
-- **智能分流** - 基于用户 ID 哈希的分桶机制 (0-10000)
-- **权重配置** - 灵活设置变体流量分配权重
-- **实时指标** - 曝光量、点击量、CTR 实时统计
-- **在线使用** - 通过 API 分配变体和记录指标
-- **本地预览** - 支持嵌入式插件预览实验效果
+- **Experiment Creation** - Create comparison experiments by selecting creatives from the asset library
+- **Smart Traffic Allocation** - Bucket mechanism based on user ID hash (0-10000)
+- **Weight Configuration** - Flexible variant traffic allocation weight settings
+- **Real-time Metrics** - Real-time statistics of impressions, clicks, and CTR
+- **Online Usage** - Allocate variants and record metrics via API
+- **Local Preview** - Support embedded plugin preview of experiment effects
 
-### 3. 任务管理系统
+### 3. Task Management System
 
-完整的任务生命周期管理：
+Complete task lifecycle management:
 
-- **任务状态追踪** - pending → queued → processing → completed/failed
-- **进度可视化** - 实时显示任务处理进度 (0-100%)
-- **批量生成** - 支持同时生成多个尺寸和变体
-- **任务删除** - 支持删除任务及关联素材
-- **首图预览** - 任务列表快速预览首个生成的素材
+- **Task Status Tracking** - pending → queued → processing → completed/failed
+- **Progress Visualization** - Real-time display of task processing progress (0-100%)
+- **Batch Generation** - Support simultaneous generation of multiple sizes and variants
+- **Task Deletion** - Support deletion of tasks and associated assets
+- **First Image Preview** - Quick preview of the first generated asset in task list
 
-### 4. 素材管理
+### 4. Asset Management
 
-集中化的创意素材库：
+Centralized creative asset library:
 
-- **分页浏览** - 高效的分页加载机制
-- **格式筛选** - 按尺寸 (1:1, 9:16, 16:9) 筛选素材
-- **质量评分** - CTR 预测、NSFW 检测、综合质量评分
-- **云端存储** - 自动上传七牛云 CDN
-- **元数据管理** - 记录文案、卖点、生成参数等完整信息
+- **Paginated Browse** - Efficient pagination loading mechanism
+- **Format Filtering** - Filter assets by size (1:1, 9:16, 16:9)
+- **Quality Scoring** - CTR prediction, NSFW detection, comprehensive quality scoring
+- **Cloud Storage** - Automatic upload to Qiniu Cloud CDN
+- **Metadata Management** - Record complete information including copy, selling points, generation parameters
 
-### 5. 模型调用追踪
+### 5. Model Call Tracking
 
-AI 模型调用的完整链路追踪：
+Complete call chain tracking for AI models:
 
-- **调用链记录** - 记录每次 AI 模型调用的完整信息
-- **步骤拆分** - 细化到文案生成、图像生成等各个步骤
-- **性能监控** - 追踪每个步骤的耗时 (ms)
-- **状态追踪** - success/failed/running 状态标记
-- **输入输出预览** - 记录请求参数和响应结果预览
-- **错误诊断** - 失败时记录详细错误信息
+- **Call Chain Records** - Record complete information for each AI model call
+- **Step Breakdown** - Detailed breakdown into copywriting generation, image generation, and other steps
+- **Performance Monitoring** - Track duration (ms) for each step
+- **Status Tracking** - success/failed/running status markers
+- **Input/Output Preview** - Record request parameters and response result preview
+- **Error Diagnosis** - Record detailed error information on failure
 
-### 6. 插件化部署
+### 6. Plugin-based Deployment
 
-支持嵌入第三方应用的插件系统：
+Plugin system that can be embedded in third-party applications:
 
-- **独立组件** - `experiment-widget.js` 可嵌入任意网页
-- **本地预览** - 插件预览页面模拟真实使用场景
-- **动态加载** - 无需重新部署即可更新实验配置
-- **国际化支持** - 中英文双语界面切换
+- **Independent Component** - `experiment-widget.js` can be embedded in any web page
+- **Local Preview** - Plugin preview page simulates real usage scenarios
+- **Dynamic Loading** - Update experiment configuration without redeployment
+- **i18n Support** - Chinese and English bilingual interface switching
 
-## 技术架构
+## Technology Architecture
 
-### 技术栈全景图
+### Technology Stack Overview
 
-项目采用现代化全栈技术架构，前端 React + TypeScript，后端 Go + Gin，集成阿里云 AI 服务。
+The project adopts a modern full-stack technology architecture with React + TypeScript frontend, Go + Gin backend, and integration with Alibaba Cloud AI services.
 
 ```mermaid
 graph TB
-    subgraph Frontend["前端技术栈"]
-        React["React 18.3<br/>UI 框架"]
-        TS["TypeScript 5.7<br/>类型系统"]
-        Vite["Vite 6.0<br/>构建工具"]
-        Router["React Router 6.28<br/>路由管理"]
-        Axios["Axios 1.7<br/>HTTP 客户端"]
-        I18n["i18n<br/>国际化"]
+    subgraph Frontend["Frontend Stack"]
+        React["React 18.3<br/>UI Framework"]
+        TS["TypeScript 5.7<br/>Type System"]
+        Vite["Vite 6.0<br/>Build Tool"]
+        Router["React Router 6.28<br/>Routing"]
+        Axios["Axios 1.7<br/>HTTP Client"]
+        I18n["i18n<br/>Internationalization"]
     end
 
-    subgraph Backend["后端技术栈"]
-        Go["Go 1.20+<br/>编程语言"]
-        Gin["Gin 1.9<br/>Web 框架"]
-        GORM["GORM 1.31<br/>ORM 框架"]
-        UUID["UUID v6<br/>唯一标识"]
-        Env["godotenv<br/>环境配置"]
+    subgraph Backend["Backend Stack"]
+        Go["Go 1.20+<br/>Language"]
+        Gin["Gin 1.9<br/>Web Framework"]
+        GORM["GORM 1.31<br/>ORM Framework"]
+        UUID["UUID v6<br/>Unique ID"]
+        Env["godotenv<br/>Env Config"]
     end
 
-    subgraph Database["数据库"]
-        PG["PostgreSQL 14+<br/>(推荐)"]
-        MySQL["MySQL 8.0+<br/>(可选)"]
+    subgraph Database["Database"]
+        PG["PostgreSQL 14+<br/>(Recommended)"]
+        MySQL["MySQL 8.0+<br/>(Optional)"]
     end
 
-    subgraph AIServices["AI 服务"]
-        Qwen["通义千问<br/>qwen-turbo<br/>文案生成"]
-        Tongyi["通义万相<br/>wanx-v1<br/>图像生成"]
+    subgraph AIServices["AI Services"]
+        Qwen["Tongyi Qianwen<br/>qwen-turbo<br/>Copywriting"]
+        Tongyi["Tongyi Wanxiang<br/>wanx-v1<br/>Image Generation"]
     end
 
-    subgraph CloudServices["云服务"]
-        Qiniu["七牛云<br/>对象存储 + CDN"]
-        AliCloud["阿里云<br/>DashScope API"]
+    subgraph CloudServices["Cloud Services"]
+        Qiniu["Qiniu Cloud<br/>Object Storage + CDN"]
+        AliCloud["Alibaba Cloud<br/>DashScope API"]
     end
 
-    subgraph DevOps["部署 & 运维"]
-        Docker["Docker<br/>容器化"]
-        Railway["Railway<br/>云平台"]
-        Nginx["Nginx<br/>反向代理"]
+    subgraph DevOps["Deployment & Ops"]
+        Docker["Docker<br/>Containerization"]
+        Railway["Railway<br/>Cloud Platform"]
+        Nginx["Nginx<br/>Reverse Proxy"]
     end
 
     Frontend --> Backend
@@ -144,94 +146,94 @@ graph TB
     style DevOps fill:#2496ed,stroke:#333,color:#fff
 ```
 
-### 后端技术栈
+### Backend Technology Stack
 
 ```
 Go 1.20+
-├── Web 框架: Gin 1.9
+├── Web Framework: Gin 1.9
 ├── ORM: GORM 1.31
-├── 数据库驱动:
+├── Database Drivers:
 │   ├── gorm.io/driver/postgres (PostgreSQL)
 │   └── gorm.io/driver/mysql (MySQL)
 ├── UUID: github.com/google/uuid
-└── 环境配置: github.com/joho/godotenv
+└── Env Config: github.com/joho/godotenv
 ```
 
-**核心依赖:**
-- **Gin** - 高性能 HTTP Web 框架
-- **GORM** - 强大的 ORM 库,支持多数据库
-- **UUID v6** - 生成唯一标识符
+**Core Dependencies:**
+- **Gin** - High-performance HTTP web framework
+- **GORM** - Powerful ORM library supporting multiple databases
+- **UUID v6** - Generate unique identifiers
 
-### 前端技术栈
+### Frontend Technology Stack
 
 ```
 React 18.3 + TypeScript 5.7 + Vite 6.0
-├── UI 框架: React 18.3.1
-├── 类型系统: TypeScript 5.7.2
-├── 构建工具: Vite 6.0.5
-├── 路由管理: React Router 6.28.0
-├── HTTP 客户端: Axios 1.7.9
-└── 国际化: 自研 i18n 方案
+├── UI Framework: React 18.3.1
+├── Type System: TypeScript 5.7.2
+├── Build Tool: Vite 6.0.5
+├── Routing: React Router 6.28.0
+├── HTTP Client: Axios 1.7.9
+└── i18n: Custom i18n solution
 ```
 
-**页面路由:**
-- `/` - Dashboard 概览
-- `/creative` - 创意生成器
-- `/tasks` - 任务列表
-- `/assets` - 素材库
-- `/experiments` - 实验管理
-- `/experiments/new` - 创建实验
-- `/traces` - 模型追踪
-- `/plugin-preview` - 插件预览
+**Page Routes:**
+- `/` - Dashboard Overview
+- `/creative` - Creative Generator
+- `/tasks` - Task List
+- `/assets` - Asset Library
+- `/experiments` - Experiment Management
+- `/experiments/new` - Create Experiment
+- `/traces` - Model Tracking
+- `/plugin-preview` - Plugin Preview
 
-### 第三方服务
+### Third-party Services
 
-**AI 服务:**
-- **阿里云通义万相 (wanx-v1)** - 文生图模型
-- **阿里云通义千问 (qwen-turbo)** - 大语言模型
+**AI Services:**
+- **Alibaba Cloud Tongyi Wanxiang (wanx-v1)** - Text-to-image model
+- **Alibaba Cloud Tongyi Qianwen (qwen-turbo)** - Large language model
 
-**云服务:**
-- **七牛云对象存储** - CDN 加速的素材存储
-- **PostgreSQL/MySQL** - 关系型数据库
+**Cloud Services:**
+- **Qiniu Cloud Object Storage** - CDN-accelerated asset storage
+- **PostgreSQL/MySQL** - Relational databases
 
-## 系统架构
+## System Architecture
 
-### 业务架构图
+### Business Architecture Diagram
 
-系统采用分层架构设计，从上到下依次为：用户界面层、API 网关层、服务层、外部服务集成层、数据持久层。
+The system adopts a layered architecture design, from top to bottom: user interface layer, API gateway layer, service layer, external service integration layer, and data persistence layer.
 
 ```mermaid
 graph TB
-    subgraph UI["用户界面层 (React)"]
-        Dashboard[Dashboard 概览]
-        Creative[创意生成器]
-        Tasks[任务管理]
-        Assets[素材库]
-        Experiments[实验平台]
-        Traces[模型追踪]
+    subgraph UI["User Interface Layer (React)"]
+        Dashboard[Dashboard Overview]
+        Creative[Creative Generator]
+        Tasks[Task Management]
+        Assets[Asset Library]
+        Experiments[Experiment Platform]
+        Traces[Model Tracking]
     end
 
-    subgraph API["API 网关层 (Gin)"]
+    subgraph API["API Gateway Layer (Gin)"]
         CopyAPI["/api/v1/copywriting/*"]
         CreativeAPI["/api/v1/creative/*"]
         ExpAPI["/api/v1/experiments/*"]
         TraceAPI["/api/v1/model_traces/*"]
     end
 
-    subgraph Services["服务层"]
-        CopyService["CopywritingService<br/>文案生成 & 候选"]
-        CreativeService["CreativeService<br/>图像生成 & 任务管理"]
-        ExpService["ExperimentService<br/>实验管理 & 分流算法"]
-        TraceService["TraceService<br/>调用链追踪"]
+    subgraph Services["Service Layer"]
+        CopyService["CopywritingService<br/>Copywriting Generation & Candidates"]
+        CreativeService["CreativeService<br/>Image Generation & Task Management"]
+        ExpService["ExperimentService<br/>Experiment Management & Traffic Allocation"]
+        TraceService["TraceService<br/>Call Chain Tracking"]
     end
 
-    subgraph External["外部服务集成层"]
-        Qwen["QwenClient<br/>(通义千问)"]
-        Tongyi["TongyiClient<br/>(通义万相)"]
-        Qiniu["QiniuService<br/>(七牛云)"]
+    subgraph External["External Service Integration"]
+        Qwen["QwenClient<br/>(Tongyi Qianwen)"]
+        Tongyi["TongyiClient<br/>(Tongyi Wanxiang)"]
+        Qiniu["QiniuService<br/>(Qiniu Cloud)"]
     end
 
-    subgraph DB["数据持久层 (GORM)"]
+    subgraph DB["Data Persistence Layer (GORM)"]
         TaskTable[(CreativeTasks)]
         AssetTable[(CreativeAssets)]
         ExpTable[(Experiments)]
@@ -242,7 +244,7 @@ graph TB
     API --> Services
     Services --> External
     Services --> DB
-    External -.上传素材.-> Qiniu
+    External -.Upload Assets.-> Qiniu
 
     style UI fill:#e1f5ff
     style API fill:#fff3e0
@@ -251,29 +253,29 @@ graph TB
     style DB fill:#fce4ec
 ```
 
-### 核心工作流
+### Core Workflows
 
-#### 1. 创意生成流程图
+#### 1. Creative Generation Flow
 
-从文案生成到图像生成的完整工作流，包含用户确认环节和多变体并发生成机制。
+Complete workflow from copywriting to image generation, including user confirmation and multi-variant concurrent generation mechanism.
 
 ```mermaid
 flowchart TD
-    Start([用户输入产品名]) --> GenCopy[调用通义千问生成文案候选]
-    GenCopy --> Candidates[生成 CTA × 3<br/>卖点 × 6]
-    Candidates --> UserSelect{用户选择/编辑文案}
-    UserSelect --> Confirm[提交确认]
-    Confirm --> CreateTask[创建 CreativeTask<br/>status=pending]
-    CreateTask --> Loop{遍历尺寸 × 变体}
+    Start([User Input Product Name]) --> GenCopy[Call Tongyi Qianwen for Copy Candidates]
+    GenCopy --> Candidates[Generate CTA × 3<br/>Selling Points × 6]
+    Candidates --> UserSelect{User Select/Edit Copy}
+    UserSelect --> Confirm[Submit Confirmation]
+    Confirm --> CreateTask[Create CreativeTask<br/>status=pending]
+    CreateTask --> Loop{Iterate Size × Variant}
 
-    Loop -->|每个组合| GenPrompt[生成提示词]
-    GenPrompt --> CallTongyi[调用通义万相生成图片]
-    CallTongyi --> Upload[上传七牛云 CDN]
-    Upload --> CreateAsset[创建 CreativeAsset]
+    Loop -->|Each Combination| GenPrompt[Generate Prompt]
+    GenPrompt --> CallTongyi[Call Tongyi Wanxiang for Image]
+    CallTongyi --> Upload[Upload to Qiniu CDN]
+    Upload --> CreateAsset[Create CreativeAsset]
     CreateAsset --> Loop
 
-    Loop -->|全部完成| UpdateStatus[更新任务状态<br/>status=completed]
-    UpdateStatus --> End([完成])
+    Loop -->|All Complete| UpdateStatus[Update Task Status<br/>status=completed]
+    UpdateStatus --> End([Complete])
 
     style Start fill:#e1f5ff
     style GenCopy fill:#fff3e0
@@ -282,31 +284,31 @@ flowchart TD
     style End fill:#c8e6c9
 ```
 
-#### 2. A/B 实验流程图
+#### 2. A/B Testing Flow
 
-基于哈希分桶的流量分配机制，支持实时指标统计和 CTR 计算。
+Traffic allocation mechanism based on hash bucketing, supporting real-time metric statistics and CTR calculation.
 
 ```mermaid
 flowchart TD
-    Start([创建实验]) --> Select[选择多个素材作为变体]
-    Select --> SetWeight[设置权重<br/>如: 0.5, 0.5]
-    SetWeight --> CalcBucket[计算分桶区间<br/>0-5000, 5000-10000]
-    CalcBucket --> Active[启动实验<br/>status=active]
+    Start([Create Experiment]) --> Select[Select Multiple Assets as Variants]
+    Select --> SetWeight[Set Weights<br/>e.g., 0.5, 0.5]
+    SetWeight --> CalcBucket[Calculate Bucket Ranges<br/>0-5000, 5000-10000]
+    CalcBucket --> Active[Start Experiment<br/>status=active]
 
-    Active --> UserVisit([用户访问])
-    UserVisit --> Assign[调用 /assign API]
-    Assign --> Hash[hash user_id % 10000<br/>得到分桶值]
-    Hash --> Match[匹配分桶区间]
-    Match --> Return[返回分配的变体]
+    Active --> UserVisit([User Visit])
+    UserVisit --> Assign[Call /assign API]
+    Assign --> Hash[hash user_id % 10000<br/>Get Bucket Value]
+    Hash --> Match[Match Bucket Range]
+    Match --> Return[Return Assigned Variant]
 
-    Return --> Display[展示广告]
-    Display --> RecordHit[记录曝光<br/>POST /hit]
+    Return --> Display[Display Ad]
+    Display --> RecordHit[Record Impression<br/>POST /hit]
 
-    RecordHit --> UserClick{用户是否点击?}
-    UserClick -->|是| RecordClick[记录点击<br/>POST /click]
-    UserClick -->|否| End1([结束])
-    RecordClick --> CalcCTR[实时计算 CTR<br/>clicks / impressions]
-    CalcCTR --> End2([结束])
+    RecordHit --> UserClick{User Click?}
+    UserClick -->|Yes| RecordClick[Record Click<br/>POST /click]
+    UserClick -->|No| End1([End])
+    RecordClick --> CalcCTR[Calculate Real-time CTR<br/>clicks / impressions]
+    CalcCTR --> End2([End])
 
     style Start fill:#e1f5ff
     style Active fill:#c8e6c9
@@ -315,117 +317,117 @@ flowchart TD
     style CalcCTR fill:#ffe0b2
 ```
 
-### 数据库设计
+### Database Design
 
-**核心数据表:**
+**Core Data Tables:**
 
 ```sql
--- 创意任务表
+-- Creative Tasks Table
 creative_tasks
-├── id (UUID 主键)
-├── user_id (用户 ID)
-├── product_name (产品名称)
-├── cta_text (CTA 文案)
-├── selling_points (卖点数组 JSON)
-├── cta_candidates (CTA 候选 JSON)
-├── selling_point_candidates (卖点候选 JSON)
-├── requested_formats (请求尺寸 JSON)
-├── num_variants (变体数量)
-├── variant_prompts (变体提示词 JSON)
-├── variant_styles (变体风格 JSON)
-├── status (任务状态)
-├── progress (进度 0-100)
-├── first_asset_url (首图预览)
-└── timestamps (时间戳)
+├── id (UUID Primary Key)
+├── user_id (User ID)
+├── product_name (Product Name)
+├── cta_text (CTA Copy)
+├── selling_points (Selling Points JSON Array)
+├── cta_candidates (CTA Candidates JSON)
+├── selling_point_candidates (Selling Point Candidates JSON)
+├── requested_formats (Requested Sizes JSON)
+├── num_variants (Number of Variants)
+├── variant_prompts (Variant Prompts JSON)
+├── variant_styles (Variant Styles JSON)
+├── status (Task Status)
+├── progress (Progress 0-100)
+├── first_asset_url (First Image Preview)
+└── timestamps (Timestamps)
 
--- 创意素材表
+-- Creative Assets Table
 creative_assets
-├── id (UUID 主键)
-├── task_id (任务 ID, 外键)
-├── image_url (图片 URL)
-├── thumbnail_url (缩略图 URL)
-├── format (尺寸规格)
-├── variant_index (变体索引)
-├── prompt_used (生成提示词)
-├── style_used (使用风格)
-├── quality_score (质量评分)
-├── predicted_ctr (预测 CTR)
-├── nsfw_score (NSFW 评分)
+├── id (UUID Primary Key)
+├── task_id (Task ID, Foreign Key)
+├── image_url (Image URL)
+├── thumbnail_url (Thumbnail URL)
+├── format (Size Specification)
+├── variant_index (Variant Index)
+├── prompt_used (Generation Prompt)
+├── style_used (Style Used)
+├── quality_score (Quality Score)
+├── predicted_ctr (Predicted CTR)
+├── nsfw_score (NSFW Score)
 └── timestamps
 
--- 实验表
+-- Experiments Table
 experiments
-├── id (UUID 主键)
-├── name (实验名称)
-├── product_name (产品名称)
-├── status (实验状态: draft/active/paused/archived)
-├── start_at (开始时间)
-├── end_at (结束时间)
+├── id (UUID Primary Key)
+├── name (Experiment Name)
+├── product_name (Product Name)
+├── status (Experiment Status: draft/active/paused/archived)
+├── start_at (Start Time)
+├── end_at (End Time)
 └── timestamps
 
--- 实验变体表
+-- Experiment Variants Table
 experiment_variants
-├── id (自增主键)
-├── experiment_id (实验 ID, 外键)
-├── creative_id (素材 ID)
-├── weight (权重 0-1)
-├── bucket_start (分桶起始 0-10000)
-├── bucket_end (分桶结束 0-10000)
+├── id (Auto-increment Primary Key)
+├── experiment_id (Experiment ID, Foreign Key)
+├── creative_id (Asset ID)
+├── weight (Weight 0-1)
+├── bucket_start (Bucket Start 0-10000)
+├── bucket_end (Bucket End 0-10000)
 ├── title, product_name, image_url, cta_text, selling_points
 └── timestamps
 
--- 实验指标表
+-- Experiment Metrics Table
 experiment_metrics
-├── id (自增主键)
-├── experiment_id (实验 ID)
-├── creative_id (素材 ID)
-├── impressions (曝光数)
-├── clicks (点击数)
-├── ctr (点击率)
+├── id (Auto-increment Primary Key)
+├── experiment_id (Experiment ID)
+├── creative_id (Asset ID)
+├── impressions (Impression Count)
+├── clicks (Click Count)
+├── ctr (Click-through Rate)
 └── updated_at
 
--- 模型追踪表
+-- Model Traces Table
 model_traces
-├── id (自增主键)
-├── trace_id (追踪 ID, 唯一索引)
-├── model_name (模型名称)
-├── model_version (模型版本)
-├── product_name (产品名称)
-├── status (状态: success/failed/running)
-├── duration_ms (耗时毫秒)
-├── start_at, end_at (时间范围)
-├── source (来源: experiment/task/user)
-├── input_preview (输入预览)
-├── output_preview (输出预览)
-├── error_message (错误信息)
+├── id (Auto-increment Primary Key)
+├── trace_id (Trace ID, Unique Index)
+├── model_name (Model Name)
+├── model_version (Model Version)
+├── product_name (Product Name)
+├── status (Status: success/failed/running)
+├── duration_ms (Duration in ms)
+├── start_at, end_at (Time Range)
+├── source (Source: experiment/task/user)
+├── input_preview (Input Preview)
+├── output_preview (Output Preview)
+├── error_message (Error Message)
 └── timestamps
 
--- 模型追踪步骤表
+-- Model Trace Steps Table
 model_trace_steps
-├── id (自增主键)
-├── trace_id (追踪 ID, 外键)
-├── step_name (步骤名称)
-├── component (组件名称)
-├── status (状态)
-├── duration_ms (耗时毫秒)
+├── id (Auto-increment Primary Key)
+├── trace_id (Trace ID, Foreign Key)
+├── step_name (Step Name)
+├── component (Component Name)
+├── status (Status)
+├── duration_ms (Duration in ms)
 ├── start_at, end_at
 ├── input_preview, output_preview
 ├── error_message
-├── extra (扩展信息 JSON)
+├── extra (Extended Info JSON)
 └── timestamps
 ```
 
-**索引策略:**
+**Index Strategy:**
 - `creative_tasks`: status, user_id, created_at
 - `creative_assets`: task_id, format, created_at
 - `experiments`: status, created_at
 - `experiment_variants`: experiment_id, creative_id
 - `experiment_metrics`: experiment_id, creative_id
-- `model_traces`: trace_id (唯一), model_name, product_name, status
+- `model_traces`: trace_id (unique), model_name, product_name, status
 
-#### 数据库 ER 关系图
+#### Database ER Diagram
 
-展示核心表之间的关联关系。
+Showing the relationships between core tables.
 
 ```mermaid
 erDiagram
@@ -520,200 +522,200 @@ erDiagram
     }
 ```
 
-### 模型调用追踪时序图
+### Model Call Tracking Sequence Diagram
 
-展示 AI 模型调用的完整链路追踪流程，从请求发起到响应记录。
+Showing the complete call chain tracking process for AI model calls, from request initiation to response recording.
 
 ```mermaid
 sequenceDiagram
-    participant User as 用户
+    participant User as User
     participant API as API Handler
     participant Service as Service Layer
     participant Tracer as Tracer
     participant AI as AI Service
     participant DB as Database
 
-    User->>API: 请求生成创意
-    API->>Service: 调用生成服务
-    Service->>Tracer: 创建 Trace<br/>trace_id=xxx<br/>status=running
-    Tracer->>DB: 插入 ModelTrace
+    User->>API: Request Creative Generation
+    API->>Service: Call Generation Service
+    Service->>Tracer: Create Trace<br/>trace_id=xxx<br/>status=running
+    Tracer->>DB: Insert ModelTrace
 
     rect rgb(230, 245, 255)
-        Note over Service,AI: 文案生成步骤
-        Service->>Tracer: 开始步骤 1<br/>step_name=文案生成
-        Tracer->>DB: 插入 TraceStep<br/>status=running
-        Service->>AI: 调用通义千问<br/>生成文案候选
-        AI-->>Service: 返回文案结果
-        Service->>Tracer: 完成步骤 1<br/>duration=800ms
-        Tracer->>DB: 更新 TraceStep<br/>status=success
+        Note over Service,AI: Copywriting Generation Step
+        Service->>Tracer: Start Step 1<br/>step_name=Copywriting
+        Tracer->>DB: Insert TraceStep<br/>status=running
+        Service->>AI: Call Tongyi Qianwen<br/>Generate Copy
+        AI-->>Service: Return Copy Results
+        Service->>Tracer: Complete Step 1<br/>duration=800ms
+        Tracer->>DB: Update TraceStep<br/>status=success
     end
 
     rect rgb(255, 243, 224)
-        Note over Service,AI: 图像生成步骤
-        Service->>Tracer: 开始步骤 2<br/>step_name=图像生成
-        Tracer->>DB: 插入 TraceStep<br/>status=running
-        Service->>AI: 调用通义万相<br/>生成图片
-        AI-->>Service: 返回图片 URL
-        Service->>Tracer: 完成步骤 2<br/>duration=2500ms
-        Tracer->>DB: 更新 TraceStep<br/>status=success
+        Note over Service,AI: Image Generation Step
+        Service->>Tracer: Start Step 2<br/>step_name=Image Generation
+        Tracer->>DB: Insert TraceStep<br/>status=running
+        Service->>AI: Call Tongyi Wanxiang<br/>Generate Image
+        AI-->>Service: Return Image URL
+        Service->>Tracer: Complete Step 2<br/>duration=2500ms
+        Tracer->>DB: Update TraceStep<br/>status=success
     end
 
-    Service->>Tracer: 完成 Trace<br/>total_duration=3300ms
-    Tracer->>DB: 更新 ModelTrace<br/>status=success
-    Service-->>API: 返回生成结果
-    API-->>User: 响应成功
+    Service->>Tracer: Complete Trace<br/>total_duration=3300ms
+    Tracer->>DB: Update ModelTrace<br/>status=success
+    Service-->>API: Return Generation Result
+    API-->>User: Response Success
 
-    Note over User,DB: 所有步骤耗时和状态已记录<br/>可通过 /model_traces API 查询
+    Note over User,DB: All step durations and statuses recorded<br/>Can be queried via /model_traces API
 ```
 
-## 项目结构
+## Project Structure
 
 ```
 ads-creative-gen-platform/
-├── cmd/                          # 命令行工具
-│   └── migrate/                 # 数据库迁移工具
-│       └── main.go              # 迁移脚本入口
+├── cmd/                          # CLI Tools
+│   └── migrate/                 # Database Migration Tool
+│       └── main.go              # Migration Script Entry
 │
-├── config/                      # 配置管理
-│   ├── config.go                # 配置加载器
-│   └── sql/                     # SQL 迁移文件
+├── config/                      # Configuration Management
+│   ├── config.go                # Configuration Loader
+│   └── sql/                     # SQL Migration Files
 │
-├── internal/                    # 内部包 (不对外暴露)
-│   ├── handlers/                # HTTP 处理器 (Controller 层)
-│   │   ├── creative_handler.go  # 创意生成接口
-│   │   ├── experiment_handler.go # 实验管理接口
-│   │   ├── trace_handler.go     # 模型追踪接口
-│   │   └── dto.go               # 数据传输对象
+├── internal/                    # Internal Packages (Not Exposed)
+│   ├── handlers/                # HTTP Handlers (Controller Layer)
+│   │   ├── creative_handler.go  # Creative Generation API
+│   │   ├── experiment_handler.go # Experiment Management API
+│   │   ├── trace_handler.go     # Model Tracking API
+│   │   └── dto.go               # Data Transfer Objects
 │   │
-│   ├── services/                # 业务逻辑层 (Service 层)
-│   │   ├── copywriting_service.go  # 文案生成服务
-│   │   ├── creative_service.go     # 创意生成服务
-│   │   ├── experiment_service.go   # 实验管理服务
-│   │   ├── qwen_client.go          # 通义千问客户端
-│   │   ├── tongyi_client.go        # 通义万相客户端
-│   │   ├── qiniu_service.go        # 七牛云服务
-│   │   └── delete_task.go          # 任务删除服务
+│   ├── services/                # Business Logic Layer (Service Layer)
+│   │   ├── copywriting_service.go  # Copywriting Service
+│   │   ├── creative_service.go     # Creative Service
+│   │   ├── experiment_service.go   # Experiment Service
+│   │   ├── qwen_client.go          # Tongyi Qianwen Client
+│   │   ├── tongyi_client.go        # Tongyi Wanxiang Client
+│   │   ├── qiniu_service.go        # Qiniu Cloud Service
+│   │   └── delete_task.go          # Task Deletion Service
 │   │
-│   ├── models/                  # 数据模型 (Model 层)
-│   │   ├── base.go              # 基础模型 (UUIDModel, Timestamps)
-│   │   ├── creative.go          # 创意相关模型
-│   │   ├── experiment.go        # 实验相关模型
-│   │   ├── trace.go             # 追踪相关模型
-│   │   ├── user.go              # 用户模型
-│   │   ├── project.go           # 项目模型
-│   │   └── tag.go               # 标签模型
+│   ├── models/                  # Data Models (Model Layer)
+│   │   ├── base.go              # Base Models (UUIDModel, Timestamps)
+│   │   ├── creative.go          # Creative Models
+│   │   ├── experiment.go        # Experiment Models
+│   │   ├── trace.go             # Trace Models
+│   │   ├── user.go              # User Model
+│   │   ├── project.go           # Project Model
+│   │   └── tag.go               # Tag Model
 │   │
-│   ├── middleware/              # 中间件
-│   │   └── cors.go              # CORS 跨域配置
+│   ├── middleware/              # Middleware
+│   │   └── cors.go              # CORS Configuration
 │   │
-│   └── tracing/                 # 追踪系统
-│       ├── tracer.go            # 追踪器
-│       └── trace_service.go     # 追踪服务
+│   └── tracing/                 # Tracing System
+│       ├── tracer.go            # Tracer
+│       └── trace_service.go     # Trace Service
 │
-├── pkg/                         # 公共包 (可对外暴露)
-│   └── database/                # 数据库连接层
-│       └── database.go          # 数据库初始化
+├── pkg/                         # Public Packages (Can be Exposed)
+│   └── database/                # Database Connection Layer
+│       └── database.go          # Database Initialization
 │
-├── web/                         # React 前端项目
+├── web/                         # React Frontend Project
 │   ├── src/
-│   │   ├── pages/              # 页面组件
-│   │   │   ├── DashboardPage.tsx          # 首页
-│   │   │   ├── CreativeGeneratorPage.tsx  # 创意生成页
-│   │   │   ├── TasksPage.tsx              # 任务列表页
-│   │   │   ├── AssetsPage.tsx             # 素材库页
-│   │   │   ├── ExperimentsPage.tsx        # 实验列表页
-│   │   │   ├── ExperimentCreatePage.tsx   # 创建实验页
-│   │   │   ├── TracePage.tsx              # 模型追踪页
-│   │   │   └── PluginPreviewPage.tsx      # 插件预览页
+│   │   ├── pages/              # Page Components
+│   │   │   ├── DashboardPage.tsx          # Home Page
+│   │   │   ├── CreativeGeneratorPage.tsx  # Creative Generation Page
+│   │   │   ├── TasksPage.tsx              # Task List Page
+│   │   │   ├── AssetsPage.tsx             # Asset Library Page
+│   │   │   ├── ExperimentsPage.tsx        # Experiment List Page
+│   │   │   ├── ExperimentCreatePage.tsx   # Create Experiment Page
+│   │   │   ├── TracePage.tsx              # Model Tracking Page
+│   │   │   └── PluginPreviewPage.tsx      # Plugin Preview Page
 │   │   │
-│   │   ├── components/         # 可复用组件
-│   │   ├── services/           # API 客户端
-│   │   ├── types/              # TypeScript 类型定义
-│   │   ├── i18n.tsx            # 国际化配置
-│   │   ├── App.tsx             # 应用入口
-│   │   └── main.tsx            # 渲染入口
+│   │   ├── components/         # Reusable Components
+│   │   ├── services/           # API Clients
+│   │   ├── types/              # TypeScript Type Definitions
+│   │   ├── i18n.tsx            # i18n Configuration
+│   │   ├── App.tsx             # Application Entry
+│   │   └── main.tsx            # Render Entry
 │   │
 │   ├── public/
-│   │   └── experiment-widget.js # 实验插件脚本
+│   │   └── experiment-widget.js # Experiment Plugin Script
 │   │
-│   ├── dist/                   # 构建产物 (由后端托管)
+│   ├── dist/                   # Build Artifacts (Hosted by Backend)
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── vite.config.js
 │
-├── docs/                       # 文档中心
-│   ├── README.md               # 文档索引
-│   ├── api-reference.md        # API 接口文档
-│   ├── database.md             # 数据库设计文档
-│   ├── database-schema.sql     # 数据库 Schema
-│   ├── guides/                 # 指南文档
-│   │   ├── development.md      # 开发指南
-│   │   └── deployment.md       # 部署指南
-│   └── design/                 # 功能设计文档
+├── docs/                       # Documentation Center
+│   ├── README.md               # Documentation Index
+│   ├── api-reference.md        # API Reference
+│   ├── database.md             # Database Design Docs
+│   ├── database-schema.sql     # Database Schema
+│   ├── guides/                 # Guide Documentation
+│   │   ├── development.md      # Development Guide
+│   │   └── deployment.md       # Deployment Guide
+│   └── design/                 # Feature Design Docs
 │       ├── copywriting-feature.md
 │       ├── experiment-feature.md
 │       ├── model-trace-page.md
 │       └── plugin-widget.md
 │
-├── scripts/                    # 管理脚本
-│   ├── start.sh               # 启动服务
-│   ├── stop.sh                # 停止服务
-│   └── status.sh              # 查看状态
+├── scripts/                    # Management Scripts
+│   ├── start.sh               # Start Service
+│   ├── stop.sh                # Stop Service
+│   └── status.sh              # Check Status
 │
-├── main.go                    # 程序入口
-├── Dockerfile                 # Docker 镜像配置 (多阶段构建)
-├── .env.example              # 环境变量模板
-├── go.mod                    # Go 依赖管理
-└── go.sum                    # Go 依赖锁定
+├── main.go                    # Program Entry
+├── Dockerfile                 # Docker Image Configuration (Multi-stage Build)
+├── .env.example              # Environment Variable Template
+├── go.mod                    # Go Dependency Management
+└── go.sum                    # Go Dependency Lock
 ```
 
-**目录设计原则:**
-- **cmd/** - 可执行程序入口
-- **internal/** - 私有代码,不对外暴露
-- **pkg/** - 可复用的公共库
-- **web/** - 前端项目,完全独立
-- **docs/** - 项目文档集中管理
-- **scripts/** - 运维脚本
+**Directory Design Principles:**
+- **cmd/** - Executable program entry points
+- **internal/** - Private code, not exposed externally
+- **pkg/** - Reusable public libraries
+- **web/** - Frontend project, completely independent
+- **docs/** - Project documentation centralized management
+- **scripts/** - Operations scripts
 
-## 快速开始
+## Quick Start
 
-### 环境要求
+### Requirements
 
-**必需:**
-- **Go**: 1.20 或更高版本
-- **Node.js**: 18 或更高版本
-- **数据库**: PostgreSQL 14+ 或 MySQL 8.0+
+**Required:**
+- **Go**: 1.20 or higher
+- **Node.js**: 18 or higher
+- **Database**: PostgreSQL 14+ or MySQL 8.0+
 
-**可选:**
-- **Docker**: 用于容器化部署
-- **Make**: 用于运行 Makefile 命令
+**Optional:**
+- **Docker**: For containerized deployment
+- **Make**: For running Makefile commands
 
-### 1. 克隆项目
+### 1. Clone Repository
 
 ```bash
 git clone <your-repo-url>
 cd ads-creative-gen-platform
 ```
 
-### 2. 配置环境变量
+### 2. Configure Environment Variables
 
 ```bash
-# 复制环境变量模板
+# Copy environment variable template
 cp .env.example .env
 
-# 编辑配置文件 (使用你喜欢的编辑器)
-vim .env  # 或 nano .env
+# Edit configuration file (use your preferred editor)
+vim .env  # or nano .env
 ```
 
-**必需配置项:**
+**Required Configuration:**
 
 ```bash
-# 应用配置
-APP_MODE=debug              # debug: 开发模式, release: 生产模式
-HTTP_PORT=:4000             # HTTP 服务端口
+# Application Configuration
+APP_MODE=debug              # debug: development mode, release: production mode
+HTTP_PORT=:4000             # HTTP service port
 
-# 数据库配置 (PostgreSQL 示例)
-DB_TYPE=postgres            # postgres 或 mysql
+# Database Configuration (PostgreSQL example)
+DB_TYPE=postgres            # postgres or mysql
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
@@ -721,56 +723,56 @@ DB_PASSWORD=your_password
 DB_NAME=ads_creative_gen_platform
 DB_CHARSET=utf8
 
-# 通义 API 配置
-TONGYI_API_KEY=sk-xxxxx    # 阿里云 DashScope API Key
-TONGYI_IMAGE_MODEL=wanx-v1  # 图像生成模型
-TONGYI_LLM_MODEL=qwen-turbo # 文案生成模型
+# Tongyi API Configuration
+TONGYI_API_KEY=sk-xxxxx    # Alibaba Cloud DashScope API Key
+TONGYI_IMAGE_MODEL=wanx-v1  # Image generation model
+TONGYI_LLM_MODEL=qwen-turbo # Copywriting generation model
 
-# 七牛云配置
+# Qiniu Cloud Configuration
 QINIU_ACCESS_KEY=your_access_key
 QINIU_SECRET_KEY=your_secret_key
 QINIU_BUCKET=your_bucket_name
-QINIU_DOMAIN=               # 可选: 自定义域名
-QINIU_PUBLIC_CLOUD_DOMAIN=  # 可选: 公有云域名
-QINIU_REGION=cn-south-1     # 存储区域
-QINIU_BASE_PATH=s3/         # 存储路径前缀
+QINIU_DOMAIN=               # Optional: Custom domain
+QINIU_PUBLIC_CLOUD_DOMAIN=  # Optional: Public cloud domain
+QINIU_REGION=cn-south-1     # Storage region
+QINIU_BASE_PATH=s3/         # Storage path prefix
 ```
 
-**获取 API Key:**
-- **通义 API Key**: [阿里云 DashScope 控制台](https://dashscope.console.aliyun.com/)
-- **七牛云密钥**: [七牛云密钥管理](https://portal.qiniu.com/user/key)
+**Get API Keys:**
+- **Tongyi API Key**: [Alibaba Cloud DashScope Console](https://dashscope.console.aliyun.com/)
+- **Qiniu Cloud Keys**: [Qiniu Cloud Key Management](https://portal.qiniu.com/user/key)
 
-### 3. 初始化数据库
+### 3. Initialize Database
 
 **PostgreSQL:**
 
 ```bash
-# 创建数据库
+# Create database
 psql -U postgres -c "CREATE DATABASE ads_creative_gen_platform;"
 
-# 运行数据库迁移
+# Run database migration
 go run cmd/migrate/main.go -action migrate
 
-# (可选) 添加默认数据
+# (Optional) Add default data
 go run cmd/migrate/main.go -action seed
 ```
 
-**迁移命令说明:**
-- `migrate` - 创建/更新表结构 (安全,不会删除数据)
-- `seed` - 添加默认数据 (管理员账号、标签等)
-- `reset` - ⚠️ 重置数据库 (删除所有数据并重新初始化)
+**Migration Command Description:**
+- `migrate` - Create/update table structure (safe, won't delete data)
+- `seed` - Add default data (admin account, tags, etc.)
+- `reset` - ⚠️ Reset database (delete all data and reinitialize)
 
-### 4. 启动后端服务
+### 4. Start Backend Service
 
 ```bash
-# 安装 Go 依赖
+# Install Go dependencies
 go mod download
 
-# 启动服务
+# Start service
 go run main.go
 ```
 
-成功后会显示:
+On success, you'll see:
 
 ```
 🚀 Server starting on :4000
@@ -778,107 +780,107 @@ go run main.go
 💚 Health Check: http://localhost:4000/health
 ```
 
-### 5. 构建并启动前端
+### 5. Build and Start Frontend
 
-**开发模式 (推荐):**
+**Development Mode (Recommended):**
 
 ```bash
 cd web
 
-# 安装依赖
+# Install dependencies
 npm install
 
-# 启动开发服务器 (热重载)
+# Start development server (hot reload)
 npm run dev
 ```
 
-前端将运行在 `http://localhost:3001`
+Frontend will run on `http://localhost:3001`
 
-**生产模式:**
+**Production Mode:**
 
 ```bash
 cd web
 
-# 安装依赖
+# Install dependencies
 npm install
 
-# 构建前端
+# Build frontend
 npm run build
 ```
 
-构建产物会生成到 `web/dist/`,然后访问后端服务 `http://localhost:4000` 即可。
+Build artifacts will be generated in `web/dist/`, then access the backend service at `http://localhost:4000`.
 
-### 6. 访问应用
+### 6. Access Application
 
-**开发模式 (前后端分离):**
-- 前端: http://localhost:3001
-- 后端 API: http://localhost:4000/api/v1
-- 健康检查: http://localhost:4000/health
+**Development Mode (Frontend-Backend Separated):**
+- Frontend: http://localhost:3001
+- Backend API: http://localhost:4000/api/v1
+- Health Check: http://localhost:4000/health
 
-**生产模式 (前后端一体化):**
-- 应用首页: http://localhost:4000
-- API 接口: http://localhost:4000/api/v1
-- 健康检查: http://localhost:4000/health
+**Production Mode (Frontend-Backend Integrated):**
+- Application Home: http://localhost:4000
+- API Endpoints: http://localhost:4000/api/v1
+- Health Check: http://localhost:4000/health
 
-### 7. 使用管理脚本 (可选)
+### 7. Use Management Scripts (Optional)
 
-项目提供了便捷的管理脚本:
+The project provides convenient management scripts:
 
 ```bash
-# 启动服务 (自动检查数据库、运行迁移)
+# Start service (auto-check database, run migrations)
 ./scripts/start.sh
 
-# 停止服务
+# Stop service
 ./scripts/stop.sh
 
-# 查看服务状态
+# Check service status
 ./scripts/status.sh
 ```
 
-## 环境配置
+## Environment Configuration
 
-### 完整环境变量说明
+### Complete Environment Variable Description
 
 ```bash
 # ==========================================
-# 应用配置
+# Application Configuration
 # ==========================================
-APP_MODE=debug              # debug: 开发模式, release: 生产模式
-HTTP_PORT=:4000             # HTTP 服务端口 (格式: :端口号)
+APP_MODE=debug              # debug: development mode, release: production mode
+HTTP_PORT=:4000             # HTTP service port (format: :port)
 
 # ==========================================
-# 数据库配置
+# Database Configuration
 # ==========================================
-DB_TYPE=postgres            # 数据库类型: postgres 或 mysql
-DB_HOST=localhost           # 数据库主机
-DB_PORT=5432                # 数据库端口 (PostgreSQL: 5432, MySQL: 3306)
-DB_USER=postgres            # 数据库用户名
-DB_PASSWORD=your_password   # 数据库密码
-DB_NAME=ads_creative_gen_platform  # 数据库名称
-DB_CHARSET=utf8             # 字符集 (MySQL: utf8mb4, PostgreSQL: utf8)
+DB_TYPE=postgres            # Database type: postgres or mysql
+DB_HOST=localhost           # Database host
+DB_PORT=5432                # Database port (PostgreSQL: 5432, MySQL: 3306)
+DB_USER=postgres            # Database username
+DB_PASSWORD=your_password   # Database password
+DB_NAME=ads_creative_gen_platform  # Database name
+DB_CHARSET=utf8             # Character set (MySQL: utf8mb4, PostgreSQL: utf8)
 
 # ==========================================
-# 阿里云通义 API 配置
+# Alibaba Cloud Tongyi API Configuration
 # ==========================================
 TONGYI_API_KEY=sk-xxxxx     # DashScope API Key
-TONGYI_IMAGE_MODEL=wanx-v1  # 图像生成模型: wanx-v1, wanx-lite-v1
-TONGYI_LLM_MODEL=qwen-turbo # 文案生成模型: qwen-turbo, qwen-plus, qwen-max
+TONGYI_IMAGE_MODEL=wanx-v1  # Image generation model: wanx-v1, wanx-lite-v1
+TONGYI_LLM_MODEL=qwen-turbo # Copywriting model: qwen-turbo, qwen-plus, qwen-max
 
 # ==========================================
-# 七牛云存储配置
+# Qiniu Cloud Storage Configuration
 # ==========================================
-QINIU_ACCESS_KEY=your_access_key  # 七牛云 AccessKey
-QINIU_SECRET_KEY=your_secret_key  # 七牛云 SecretKey
-QINIU_BUCKET=your_bucket_name     # 存储空间名称
-QINIU_DOMAIN=                     # 自定义 CDN 域名 (可选)
-QINIU_PUBLIC_CLOUD_DOMAIN=        # 公有云默认域名 (可选)
-QINIU_REGION=cn-south-1           # 存储区域: cn-south-1 (华南), cn-east-2 (华东)
-QINIU_BASE_PATH=s3/               # 存储路径前缀
+QINIU_ACCESS_KEY=your_access_key  # Qiniu AccessKey
+QINIU_SECRET_KEY=your_secret_key  # Qiniu SecretKey
+QINIU_BUCKET=your_bucket_name     # Bucket name
+QINIU_DOMAIN=                     # Custom CDN domain (optional)
+QINIU_PUBLIC_CLOUD_DOMAIN=        # Public cloud default domain (optional)
+QINIU_REGION=cn-south-1           # Storage region: cn-south-1 (South China), cn-east-2 (East China)
+QINIU_BASE_PATH=s3/               # Storage path prefix
 ```
 
-### 数据库切换
+### Database Switching
 
-**使用 PostgreSQL (推荐):**
+**Using PostgreSQL (Recommended):**
 
 ```bash
 DB_TYPE=postgres
@@ -890,68 +892,68 @@ DB_NAME=ads_creative_gen_platform
 DB_CHARSET=utf8
 ```
 
-## 部署指南
+## Deployment Guide
 
-### 方式一: Docker 部署 (推荐)
+### Method 1: Docker Deployment (Recommended)
 
-项目提供了多阶段构建的 Dockerfile,可以实现前后端一体化部署。
+The project provides a multi-stage build Dockerfile for integrated frontend-backend deployment.
 
-**构建镜像:**
+**Build Image:**
 
 ```bash
-# 构建 Docker 镜像
+# Build Docker image
 docker build -t ads-creative-gen-platform:latest .
 
-# 运行容器
+# Run container
 docker run -d \
   --name ads-platform \
   -p 4000:4000 \
   --env-file .env \
   ads-creative-gen-platform:latest
 
-# 查看日志
+# View logs
 docker logs -f ads-platform
 ```
 
-**Docker 多阶段构建流程图:**
+**Docker Multi-stage Build Flow:**
 
-展示前后端分离构建、最终整合为单一运行时镜像的完整流程。
+Showing the complete process of frontend-backend separated build, ultimately integrated into a single runtime image.
 
 ```mermaid
 graph LR
-    subgraph Stage1["阶段 1: 前端构建"]
+    subgraph Stage1["Stage 1: Frontend Build"]
         S1_Base["Node.js 20 Alpine"]
-        S1_Copy["复制 package.json"]
-        S1_Install["npm ci 安装依赖"]
+        S1_Copy["Copy package.json"]
+        S1_Install["npm ci install deps"]
         S1_Build["npm run build"]
         S1_Output["web/dist/"]
 
         S1_Base --> S1_Copy --> S1_Install --> S1_Build --> S1_Output
     end
 
-    subgraph Stage2["阶段 2: 后端构建"]
+    subgraph Stage2["Stage 2: Backend Build"]
         S2_Base["Go 1.22 Alpine"]
         S2_Deps["go mod download"]
-        S2_CopyFront["复制前端产物"]
+        S2_CopyFront["Copy frontend artifacts"]
         S2_Build["go build"]
-        S2_Output["main 二进制"]
+        S2_Output["main binary"]
 
         S2_Base --> S2_Deps --> S2_CopyFront --> S2_Build --> S2_Output
     end
 
-    subgraph Stage3["阶段 3: 运行时"]
+    subgraph Stage3["Stage 3: Runtime"]
         S3_Base["Alpine Latest"]
-        S3_Runtime["安装运行时依赖<br/>ca-certificates, tzdata"]
-        S3_Copy["复制 main + web/dist/"]
-        S3_User["创建非 root 用户"]
-        S3_Final["最终镜像<br/>~50MB"]
+        S3_Runtime["Install runtime deps<br/>ca-certificates, tzdata"]
+        S3_Copy["Copy main + web/dist/"]
+        S3_User["Create non-root user"]
+        S3_Final["Final image<br/>~50MB"]
 
         S3_Base --> S3_Runtime --> S3_Copy --> S3_User --> S3_Final
     end
 
-    S1_Output -.->|复制到阶段2| S2_CopyFront
-    S1_Output -.->|复制到阶段3| S3_Copy
-    S2_Output -.->|复制到阶段3| S3_Copy
+    S1_Output -.->|Copy to Stage 2| S2_CopyFront
+    S1_Output -.->|Copy to Stage 3| S3_Copy
+    S2_Output -.->|Copy to Stage 3| S3_Copy
 
     style Stage1 fill:#e3f2fd
     style Stage2 fill:#f3e5f5
@@ -959,60 +961,59 @@ graph LR
     style S3_Final fill:#c8e6c9,stroke:#4caf50,stroke-width:3px
 ```
 
-**优势:**
-- ✅ 镜像体积小 (~50MB)
-- ✅ 安全性高 (非 root 用户)
-- ✅ 自动多阶段构建
-- ✅ 包含健康检查
-- ✅ 前后端一体化部署
+**Advantages:**
+- ✅ Small image size (~50MB)
+- ✅ High security (non-root user)
+- ✅ Automatic multi-stage build
+- ✅ Includes health checks
+- ✅ Integrated frontend-backend deployment
 
-### 方式二: 云平台部署
+### Method 2: Cloud Platform Deployment
 
 #### Railway
 
-Railway 是一个零配置的云部署平台。
+Railway is a zero-config cloud deployment platform.
 
 ```bash
-# 1. 安装 Railway CLI
+# 1. Install Railway CLI
 npm install -g @railway/cli
 
-# 2. 登录
+# 2. Login
 railway login
 
-# 3. 初始化项目
+# 3. Initialize project
 railway init
 
-# 4. 部署
+# 4. Deploy
 railway up
 ```
 
 #### Render
 
-Render 支持从 Dockerfile 自动部署。
+Render supports automatic deployment from Dockerfile.
 
-**步骤:**
-1. 在 Render 创建新的 Web Service
-2. 连接 GitHub 仓库
-3. 选择 Dockerfile 构建
-4. 配置环境变量
-5. 点击部署
+**Steps:**
+1. Create a new Web Service on Render
+2. Connect GitHub repository
+3. Select Dockerfile build
+4. Configure environment variables
+5. Click deploy
 
+## API Reference
 
-## API 接口
+### Authentication
 
-### 认证
+Current version doesn't implement authentication, all endpoints are directly accessible.
 
-当前版本暂未实现认证系统,所有接口均可直接访问。
+### Base Endpoints
 
-### 基础接口
-
-#### 健康检查
+#### Health Check
 
 ```http
 GET /health
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
@@ -1027,7 +1028,7 @@ GET /health
 GET /api/v1/ping
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
@@ -1035,49 +1036,49 @@ GET /api/v1/ping
 }
 ```
 
-### 文案生成接口
+### Copywriting Generation Endpoints
 
-#### 生成文案候选
+#### Generate Copy Candidates
 
 ```http
 POST /api/v1/copywriting/generate
 Content-Type: application/json
 
 {
-  "product_name": "夏季清凉T恤"
+  "product_name": "Summer Cool T-shirt"
 }
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
   "cta_candidates": [
-    "立即抢购",
-    "马上购买",
-    "限时特惠"
+    "Buy Now",
+    "Shop Now",
+    "Limited Time Offer"
   ],
   "selling_point_candidates": [
-    "纯棉透气，清凉一夏",
-    "吸汗速干，舒适无痕",
-    "经典设计，百搭时尚",
-    "精选面料，亲肤柔软",
-    "夏日必备，清爽随行",
-    "多色可选，彰显个性"
+    "Pure cotton, breathable, cool all summer",
+    "Sweat-wicking, comfortable, seamless",
+    "Classic design, versatile fashion",
+    "Premium fabric, skin-friendly softness",
+    "Summer essential, refreshing companion",
+    "Multiple colors, show your personality"
   ]
 }
 ```
 
-#### 确认文案并启动创意生成
+#### Confirm Copy and Start Creative Generation
 
 ```http
 POST /api/v1/copywriting/confirm
 Content-Type: application/json
 
 {
-  "product_name": "夏季清凉T恤",
-  "cta": "立即抢购",
-  "selling_point": "纯棉透气，清凉一夏",
+  "product_name": "Summer Cool T-shirt",
+  "cta": "Buy Now",
+  "selling_point": "Pure cotton, breathable, cool all summer",
   "requested_formats": ["1:1", "9:16", "16:9"],
   "num_variants": 3,
   "selected_cta_index": 0,
@@ -1085,35 +1086,35 @@ Content-Type: application/json
 }
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
   "task_id": "550e8400-e29b-41d4-a716-446655440000",
   "status": "pending",
-  "message": "任务已创建,开始生成创意"
+  "message": "Task created, starting creative generation"
 }
 ```
 
-### 创意生成接口
+### Creative Generation Endpoints
 
-#### 直接生成创意 (跳过文案生成)
+#### Direct Creative Generation (Skip Copywriting)
 
 ```http
 POST /api/v1/creative/generate
 Content-Type: application/json
 
 {
-  "title": "夏季T恤促销",
-  "product_name": "夏季清凉T恤",
-  "selling_points": ["纯棉透气", "吸汗速干"],
-  "cta_text": "立即抢购",
+  "title": "Summer T-shirt Promotion",
+  "product_name": "Summer Cool T-shirt",
+  "selling_points": ["Pure cotton breathable", "Sweat-wicking"],
+  "cta_text": "Buy Now",
   "requested_formats": ["1:1", "9:16"],
   "num_variants": 2
 }
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
@@ -1122,19 +1123,19 @@ Content-Type: application/json
 }
 ```
 
-#### 查询任务状态
+#### Query Task Status
 
 ```http
 GET /api/v1/creative/task/{task_id}
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
-  "title": "夏季T恤促销",
-  "product_name": "夏季清凉T恤",
+  "title": "Summer T-shirt Promotion",
+  "product_name": "Summer Cool T-shirt",
   "status": "completed",
   "progress": 100,
   "requested_formats": ["1:1", "9:16"],
@@ -1156,22 +1157,22 @@ GET /api/v1/creative/task/{task_id}
 }
 ```
 
-**任务状态:**
-- `draft` - 草稿 (仅文案生成)
-- `pending` - 待处理
-- `queued` - 已排队
-- `processing` - 处理中
-- `completed` - 已完成
-- `failed` - 失败
-- `cancelled` - 已取消
+**Task Status:**
+- `draft` - Draft (copywriting only)
+- `pending` - Pending
+- `queued` - Queued
+- `processing` - Processing
+- `completed` - Completed
+- `failed` - Failed
+- `cancelled` - Cancelled
 
-#### 获取任务列表
+#### Get Task List
 
 ```http
 GET /api/v1/creative/tasks?page=1&page_size=10
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
@@ -1184,34 +1185,34 @@ GET /api/v1/creative/tasks?page=1&page_size=10
 }
 ```
 
-#### 删除任务
+#### Delete Task
 
 ```http
 DELETE /api/v1/creative/task/{task_id}
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
-  "message": "任务及关联素材已删除"
+  "message": "Task and associated assets deleted"
 }
 ```
 
-### 素材管理接口
+### Asset Management Endpoints
 
-#### 获取素材列表
+#### Get Asset List
 
 ```http
 GET /api/v1/creative/assets?page=1&page_size=20&format=1:1
 ```
 
-**查询参数:**
-- `page` - 页码 (默认 1)
-- `page_size` - 每页数量 (默认 20)
-- `format` - 尺寸筛选 (可选: 1:1, 9:16, 16:9)
+**Query Parameters:**
+- `page` - Page number (default 1)
+- `page_size` - Items per page (default 20)
+- `format` - Size filter (optional: 1:1, 9:16, 16:9)
 
-**响应:**
+**Response:**
 
 ```json
 {
@@ -1224,17 +1225,17 @@ GET /api/v1/creative/assets?page=1&page_size=20&format=1:1
 }
 ```
 
-### 实验管理接口
+### Experiment Management Endpoints
 
-#### 创建实验
+#### Create Experiment
 
 ```http
 POST /api/v1/experiments
 Content-Type: application/json
 
 {
-  "name": "夏季T恤广告测试",
-  "product_name": "夏季清凉T恤",
+  "name": "Summer T-shirt Ad Test",
+  "product_name": "Summer Cool T-shirt",
   "variants": [
     {
       "creative_id": 1,
@@ -1248,12 +1249,12 @@ Content-Type: application/json
 }
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
   "id": "exp-uuid",
-  "name": "夏季T恤广告测试",
+  "name": "Summer T-shirt Ad Test",
   "status": "draft",
   "variants": [
     {
@@ -1274,13 +1275,13 @@ Content-Type: application/json
 }
 ```
 
-#### 获取实验列表
+#### Get Experiment List
 
 ```http
 GET /api/v1/experiments?page=1&page_size=10
 ```
 
-#### 更新实验状态
+#### Update Experiment Status
 
 ```http
 POST /api/v1/experiments/{id}/status
@@ -1291,39 +1292,39 @@ Content-Type: application/json
 }
 ```
 
-**状态值:**
-- `draft` - 草稿
-- `active` - 运行中
-- `paused` - 已暂停
-- `archived` - 已归档
+**Status Values:**
+- `draft` - Draft
+- `active` - Running
+- `paused` - Paused
+- `archived` - Archived
 
-#### 分配变体 (分流)
+#### Assign Variant (Traffic Allocation)
 
 ```http
 GET /api/v1/experiments/{id}/assign?user_id=user123
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
   "variant_id": 1,
   "creative_id": 1,
-  "title": "夏季清凉T恤",
-  "product_name": "夏季清凉T恤",
+  "title": "Summer Cool T-shirt",
+  "product_name": "Summer Cool T-shirt",
   "image_url": "https://cdn.example.com/xxx.jpg",
-  "cta_text": "立即抢购",
-  "selling_points": ["纯棉透气", "吸汗速干"]
+  "cta_text": "Buy Now",
+  "selling_points": ["Pure cotton breathable", "Sweat-wicking"]
 }
 ```
 
-**分流算法:**
+**Traffic Allocation Algorithm:**
 ```
 bucket = hash(user_id) % 10000
-匹配 bucket_start <= bucket < bucket_end 的变体
+Match variant with bucket_start <= bucket < bucket_end
 ```
 
-#### 记录曝光
+#### Record Impression
 
 ```http
 POST /api/v1/experiments/{id}/hit
@@ -1335,15 +1336,15 @@ Content-Type: application/json
 }
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
-  "message": "曝光已记录"
+  "message": "Impression recorded"
 }
 ```
 
-#### 记录点击
+#### Record Click
 
 ```http
 POST /api/v1/experiments/{id}/click
@@ -1355,21 +1356,21 @@ Content-Type: application/json
 }
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
-  "message": "点击已记录"
+  "message": "Click recorded"
 }
 ```
 
-#### 查看实验指标
+#### View Experiment Metrics
 
 ```http
 GET /api/v1/experiments/{id}/metrics
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
@@ -1391,15 +1392,15 @@ GET /api/v1/experiments/{id}/metrics
 }
 ```
 
-### 模型追踪接口
+### Model Tracking Endpoints
 
-#### 获取追踪列表
+#### Get Trace List
 
 ```http
 GET /api/v1/model_traces?page=1&page_size=10
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
@@ -1412,52 +1413,52 @@ GET /api/v1/model_traces?page=1&page_size=10
 }
 ```
 
-#### 获取追踪详情
+#### Get Trace Details
 
 ```http
 GET /api/v1/model_traces/{id}
 ```
 
-**响应:**
+**Response:**
 
 ```json
 {
   "id": 1,
   "trace_id": "trace-uuid",
-  "model_name": "通义千问",
+  "model_name": "Tongyi Qianwen",
   "model_version": "qwen-turbo",
-  "product_name": "夏季清凉T恤",
+  "product_name": "Summer Cool T-shirt",
   "status": "success",
   "duration_ms": 1500,
   "start_at": "2024-12-15T10:00:00Z",
   "end_at": "2024-12-15T10:00:01.5Z",
   "steps": [
     {
-      "step_name": "文案生成",
+      "step_name": "Copywriting Generation",
       "component": "QwenClient",
       "status": "success",
       "duration_ms": 800,
-      "input_preview": "产品名称: 夏季清凉T恤",
-      "output_preview": "CTA: 立即抢购; 卖点: ..."
+      "input_preview": "Product name: Summer Cool T-shirt",
+      "output_preview": "CTA: Buy Now; Selling points: ..."
     }
   ]
 }
 ```
 
-## 开发指南
+## Development Guide
 
-### 后端开发
+### Backend Development
 
-#### 项目结构约定
+#### Project Structure Conventions
 
-- **handlers/** - 仅负责 HTTP 请求/响应处理,不包含业务逻辑
-- **services/** - 核心业务逻辑层,可被多个 handler 复用
-- **models/** - 数据模型定义,使用 GORM 标签
-- **pkg/** - 可复用的公共库 (如数据库连接)
+- **handlers/** - Only responsible for HTTP request/response handling, no business logic
+- **services/** - Core business logic layer, can be reused by multiple handlers
+- **models/** - Data model definitions using GORM tags
+- **pkg/** - Reusable public libraries (such as database connections)
 
-#### 添加新接口
+#### Adding New Endpoints
 
-**1. 定义数据模型 (internal/models/)**
+**1. Define Data Model (internal/models/)**
 
 ```go
 package models
@@ -1473,7 +1474,7 @@ func (MyModel) TableName() string {
 }
 ```
 
-**2. 创建服务层 (internal/services/)**
+**2. Create Service Layer (internal/services/)**
 
 ```go
 package services
@@ -1491,7 +1492,7 @@ func (s *MyService) Create(data *models.MyModel) error {
 }
 ```
 
-**3. 创建处理器 (internal/handlers/)**
+**3. Create Handler (internal/handlers/)**
 
 ```go
 package handlers
@@ -1513,7 +1514,7 @@ func (h *MyHandler) Create(c *gin.Context) {
         return
     }
 
-    // 调用服务层
+    // Call service layer
     model := &models.MyModel{Name: req.Name}
     if err := h.service.Create(model); err != nil {
         c.JSON(500, gin.H{"error": err.Error()})
@@ -1524,7 +1525,7 @@ func (h *MyHandler) Create(c *gin.Context) {
 }
 ```
 
-**4. 注册路由 (main.go)**
+**4. Register Routes (main.go)**
 
 ```go
 myHandler := handlers.NewMyHandler()
@@ -1532,24 +1533,24 @@ v1.POST("/my-models", myHandler.Create)
 v1.GET("/my-models/:id", myHandler.Get)
 ```
 
-#### 数据库迁移
+#### Database Migration
 
-**自动迁移 (开发环境):**
+**Auto Migration (Development):**
 
-在 `pkg/database/database.go` 中添加模型:
+Add model in `pkg/database/database.go`:
 
 ```go
 func InitializeDatabase() {
     // ...
     DB.AutoMigrate(
-        &models.MyModel{}, // 添加新模型
+        &models.MyModel{}, // Add new model
     )
 }
 ```
 
-**手动迁移 (生产环境):**
+**Manual Migration (Production):**
 
-在 `cmd/migrate/main.go` 中添加:
+Add in `cmd/migrate/main.go`:
 
 ```go
 func migrate() {
@@ -1558,24 +1559,24 @@ func migrate() {
 }
 ```
 
-然后运行:
+Then run:
 
 ```bash
 go run cmd/migrate/main.go -action migrate
 ```
 
-### 前端开发
+### Frontend Development
 
-#### 项目结构约定
+#### Project Structure Conventions
 
-- **pages/** - 页面组件 (一个路由对应一个页面)
-- **components/** - 可复用组件
-- **services/** - API 客户端封装
-- **types/** - TypeScript 类型定义
+- **pages/** - Page components (one route corresponds to one page)
+- **components/** - Reusable components
+- **services/** - API client wrappers
+- **types/** - TypeScript type definitions
 
-#### 添加新页面
+#### Adding New Pages
 
-**1. 创建页面组件 (src/pages/MyPage.tsx)**
+**1. Create Page Component (src/pages/MyPage.tsx)**
 
 ```tsx
 import React from 'react';
@@ -1591,7 +1592,7 @@ const MyPage: React.FC = () => {
 export default MyPage;
 ```
 
-**2. 注册路由 (src/App.tsx)**
+**2. Register Route (src/App.tsx)**
 
 ```tsx
 import MyPage from './pages/MyPage';
@@ -1601,9 +1602,9 @@ import MyPage from './pages/MyPage';
 </Routes>
 ```
 
-#### API 调用
+#### API Calls
 
-**1. 定义类型 (src/types/index.ts)**
+**1. Define Types (src/types/index.ts)**
 
 ```typescript
 export interface MyModel {
@@ -1614,7 +1615,7 @@ export interface MyModel {
 }
 ```
 
-**2. 创建 API 服务 (src/services/api.ts)**
+**2. Create API Service (src/services/api.ts)**
 
 ```typescript
 import axios from 'axios';
@@ -1635,7 +1636,7 @@ export const myApi = {
 };
 ```
 
-**3. 在组件中使用**
+**3. Use in Component**
 
 ```tsx
 import { useEffect, useState } from 'react';
@@ -1653,9 +1654,9 @@ const MyPage: React.FC = () => {
 };
 ```
 
-#### 国际化
+#### Internationalization
 
-使用项目内置的 i18n 系统:
+Use the project's built-in i18n system:
 
 ```tsx
 import { useI18n } from '../i18n';
@@ -1673,7 +1674,7 @@ const MyComponent: React.FC = () => {
 };
 ```
 
-在 `src/i18n.tsx` 中添加翻译:
+Add translations in `src/i18n.tsx`:
 
 ```typescript
 const translations = {
@@ -1690,126 +1691,126 @@ const translations = {
 };
 ```
 
-### 代码规范
+### Code Standards
 
-**Go 代码规范:**
-- 遵循 [Effective Go](https://golang.org/doc/effective_go.html)
-- 使用 `gofmt` 格式化代码
-- 导出函数和类型添加注释
-- 错误处理不要忽略
+**Go Code Standards:**
+- Follow [Effective Go](https://golang.org/doc/effective_go.html)
+- Use `gofmt` to format code
+- Add comments for exported functions and types
+- Don't ignore error handling
 
-**TypeScript 代码规范:**
-- 使用严格模式 (`strict: true`)
-- 组件使用函数式组件 + Hooks
-- 避免使用 `any`,尽量定义类型
-- 使用 ESLint 和 Prettier 格式化
+**TypeScript Code Standards:**
+- Use strict mode (`strict: true`)
+- Use functional components + Hooks
+- Avoid using `any`, define types as much as possible
+- Use ESLint and Prettier for formatting
 
-### 测试
+### Testing
 
-**后端测试:**
+**Backend Testing:**
 
 ```bash
-# 运行所有测试
+# Run all tests
 go test ./...
 
-# 运行特定包的测试
+# Run tests for specific package
 go test ./internal/services
 
-# 带覆盖率
+# With coverage
 go test -cover ./...
 ```
 
-**前端测试:**
+**Frontend Testing:**
 
 ```bash
 cd web
 
-# 类型检查
+# Type checking
 npx tsc --noEmit
 
-# (可选) 添加单元测试框架如 Vitest
+# (Optional) Add unit test framework like Vitest
 npm run test
 ```
 
-### 常见问题
+### Common Issues
 
-#### 1. 数据库连接失败
+#### 1. Database Connection Failed
 
-**问题:** 启动时提示数据库连接失败
+**Problem:** Database connection failure on startup
 
-**解决:**
+**Solution:**
 ```bash
-# 检查数据库是否运行
+# Check if database is running
 # PostgreSQL
 pg_isready
 
 # MySQL
 mysqladmin ping
 
-# 检查环境变量
+# Check environment variables
 cat .env | grep DB_
 
-# 测试连接
+# Test connection
 psql -h localhost -U postgres -d ads_creative_gen_platform
 ```
 
-#### 2. 前端访问 404
+#### 2. Frontend 404
 
-**问题:** 访问前端页面返回 404
+**Problem:** Frontend pages return 404
 
-**解决:**
+**Solution:**
 ```bash
-# 确保前端已构建
+# Ensure frontend is built
 cd web && npm run build
 
-# 检查 dist 目录
+# Check dist directory
 ls -la web/dist/
 
-# 重启后端
+# Restart backend
 go run main.go
 ```
 
-#### 3. 通义 API 调用失败
+#### 3. Tongyi API Call Failed
 
-**问题:** 生成创意时报错 "API Key invalid"
+**Problem:** Error "API Key invalid" when generating creatives
 
-**解决:**
+**Solution:**
 ```bash
-# 检查 API Key
+# Check API Key
 echo $TONGYI_API_KEY
 
-# 验证 API Key 是否有效
+# Verify API Key validity
 curl -X POST 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation' \
   -H "Authorization: Bearer $TONGYI_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{
     "model": "qwen-turbo",
-    "input": {"prompt": "你好"},
+    "input": {"prompt": "Hello"},
     "parameters": {}
   }'
 ```
 
-#### 4. 七牛云上传失败
+#### 4. Qiniu Cloud Upload Failed
 
-**问题:** 图片生成后上传七牛云失败
+**Problem:** Image upload to Qiniu Cloud fails after generation
 
-**解决:**
+**Solution:**
 ```bash
-# 检查七牛云配置
+# Check Qiniu Cloud configuration
 cat .env | grep QINIU_
 
-# 确保 Bucket 存在且有权限
-# 检查存储区域配置是否正确 (cn-south-1, cn-east-2 等)
-# 检查 AccessKey/SecretKey 是否正确
+# Ensure Bucket exists and has permissions
+# Check storage region configuration (cn-south-1, cn-east-2, etc.)
+# Check AccessKey/SecretKey are correct
 ```
 
-#### 5. CORS 跨域错误
+#### 5. CORS Error
 
-**问题:** 前端开发模式下 API 调用报 CORS 错误
+**Problem:** CORS errors when calling API in frontend development mode
 
-**解决:**
+**Solution:**
 
-后端已配置 CORS 中间件 (`internal/middleware/cors.go`),但如果仍有问题:
+Backend has CORS middleware configured (`internal/middleware/cors.go`), but if issues persist:
 
 ```go
 // internal/middleware/cors.go
@@ -1829,56 +1830,56 @@ func CORSMiddleware() gin.HandlerFunc {
 }
 ```
 
-## 性能优化
+## Performance Optimization
 
-### 后端优化
+### Backend Optimization
 
-- **数据库索引**: 已为常用查询字段添加索引
-- **连接池**: GORM 自动管理数据库连接池
-- **并发控制**: 使用 Goroutine 处理多变体生成
+- **Database Indexes**: Indexes added for commonly queried fields
+- **Connection Pool**: GORM automatically manages database connection pool
+- **Concurrency Control**: Use Goroutines to handle multi-variant generation
 
-### 前端优化
+### Frontend Optimization
 
-- **代码分割**: Vite 自动进行代码分割
-- **懒加载**: 可为大组件添加 `React.lazy()`
-- **图片优化**: 使用七牛云 CDN + 缩略图
+- **Code Splitting**: Vite automatically performs code splitting
+- **Lazy Loading**: Add `React.lazy()` for large components
+- **Image Optimization**: Use Qiniu Cloud CDN + thumbnails
 
-## 安全性
+## Security
 
-### 当前安全措施
+### Current Security Measures
 
-- **CORS 配置**: 防止未授权的跨域访问
-- **输入验证**: 使用 GORM 参数化查询防止 SQL 注入
-- **非 root 用户**: Docker 容器使用非特权用户运行
-- **环境变量**: 敏感信息通过环境变量管理
+- **CORS Configuration**: Prevent unauthorized cross-origin access
+- **Input Validation**: Use GORM parameterized queries to prevent SQL injection
+- **Non-root User**: Docker containers run with non-privileged users
+- **Environment Variables**: Sensitive information managed through environment variables
 
-### 待实现
+### To Be Implemented
 
-- [ ] 用户认证 (JWT)
-- [ ] API 限流
-- [ ] HTTPS 强制
-- [ ] 请求签名验证
+- [ ] User Authentication (JWT)
+- [ ] API Rate Limiting
+- [ ] HTTPS Enforcement
+- [ ] Request Signature Verification
 
-## 路线图
+## Roadmap
 
-### 已完成
+### Completed
 
-- [x] 基础创意生成功能
-- [x] 文案生成工作流
-- [x] A/B 实验平台
-- [x] 模型调用追踪
-- [x] 国际化支持 (中英文)
-- [x] 插件系统
+- [x] Basic creative generation functionality
+- [x] Copywriting generation workflow
+- [x] A/B testing platform
+- [x] Model call tracking
+- [x] Internationalization support (Chinese/English)
+- [x] Plugin system
 
-### 进行中
+### In Progress
 
-- [ ] 用户认证系统
-- [ ] 素材评分系统完善
-- [ ] 批量导出功能
+- [ ] User authentication system
+- [ ] Asset scoring system improvement
+- [ ] Batch export functionality
 
-### 计划中
+### Planned
 
-- [ ] 更多 AI 模型支持
-- [ ] 实验报告自动生成
-- [ ] Webhook 通知
-- [ ] API 文档自动生成
+- [ ] More AI model support
+- [ ] Automatic experiment report generation
+- [ ] Webhook notifications
+- [ ] Automatic API documentation generation
