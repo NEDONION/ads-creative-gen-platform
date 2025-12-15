@@ -123,7 +123,8 @@ const ExperimentsPage: React.FC = () => {
       if (res.code === 0 && res.data) {
         setExpId(res.data.experiment_id);
         setMessage(`创建成功，ID: ${res.data.experiment_id}`);
-        loadExperiments();
+        await loadExperiments();
+        handleSelectExperiment(res.data.experiment_id);
       } else {
         setMessage(res.message || '创建失败');
       }
@@ -184,7 +185,7 @@ const ExperimentsPage: React.FC = () => {
     }
   };
 
-  const updateVariant = (idx: number, field: keyof ExperimentVariantInput, value: number | string) => {
+  const updateVariant = (idx: number, field: keyof ExperimentVariantInput, value: number | string | string[]) => {
     setVariants((prev) => {
       const copy = [...prev];
       copy[idx] = { ...copy[idx], [field]: value } as ExperimentVariantInput;
@@ -569,7 +570,7 @@ const ExperimentsPage: React.FC = () => {
                       <div className="compact-form-group">
                         <label className="compact-label">CTA（选择或覆盖）</label>
                         {(() => {
-                          const info = getCreativeInfo(v.creative_id) || {};
+                          const info = (getCreativeInfo(v.creative_id) || {}) as { cta_text?: string; selling_points?: string[] };
                           const creativeCTA = info.cta_text || '';
                           const selectedCTA = (v as any).cta_text || '';
                           const options = [
@@ -609,11 +610,11 @@ const ExperimentsPage: React.FC = () => {
                       <div className="compact-form-group">
                         <label className="compact-label">卖点选择（可多选）</label>
                         {(() => {
-                          const info = getCreativeInfo(v.creative_id) || {};
+                          const info = (getCreativeInfo(v.creative_id) || {}) as { selling_points?: string[] };
                           const spOptions = Array.isArray(info.selling_points) ? info.selling_points : [];
                           const selectedSP: string[] = Array.isArray((v as any).selling_points) ? ((v as any).selling_points as any) : [];
                           const toggleSP = (sp: string) => {
-                            const next = selectedSP.includes(sp) ? selectedSP.filter((s) => s !== sp) : [...selectedSP, sp];
+                            const next = selectedSP.includes(sp) ? selectedSP.filter((s: string) => s !== sp) : [...selectedSP, sp];
                             updateVariant(idx, 'selling_points' as keyof ExperimentVariantInput, next);
                           };
                           return spOptions.length > 0 ? (
@@ -642,14 +643,25 @@ const ExperimentsPage: React.FC = () => {
                             ) : (
                               <div style={{ marginBottom: 4, color: '#999' }}>无 CTA，提交后按覆盖值或创意默认</div>
                             )}
-                            {getCreativeInfo(v.creative_id)?.selling_points && getCreativeInfo(v.creative_id)?.selling_points!.length > 0 ? (
+                            {(() => {
+                              const info = getCreativeInfo(v.creative_id);
+                              return info && info.selling_points && info.selling_points.length > 0 ? (
+                                <div>
+                                  <strong>卖点：</strong>
+                                  <span>{info.selling_points.slice(0, 3).join(' / ')}</span>
+                                </div>
+                              ) : (
+                                <div style={{ color: '#999' }}>无卖点，提交后按覆盖值或创意默认</div>
+                              );
+                            })()}
+                            {/* {getCreativeInfo(v.creative_id)?.selling_points && getCreativeInfo(v.creative_id)?.selling_points!.length > 0 ? (
                               <div>
                                 <strong>卖点：</strong>
                                 <span>{getCreativeInfo(v.creative_id)?.selling_points!.slice(0, 3).join(' / ')}</span>
                               </div>
                             ) : (
                               <div style={{ color: '#999' }}>无卖点，提交后按覆盖值或创意默认</div>
-                            )}
+                            )} */}
                           </div>
                         </div>
                       )}
