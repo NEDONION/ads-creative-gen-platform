@@ -42,7 +42,7 @@ const messages: Messages = {
   size: { zh: '尺寸', en: 'Size' },
   progress: { zh: '进度', en: 'Progress' },
   stepProduct: { zh: '商品', en: 'Product' },
-  stepCopy: { zh: '文案', en: 'Copy' },
+  stepCopy: { zh: '文案', en: 'Selling Points' },
   stepCreative: { zh: '生成', en: 'Creative' },
   productName: { zh: '商品名称', en: 'Product name' },
   productPlaceholder: { zh: '如：智能手表 Pro', en: 'e.g. Smart Watch Pro' },

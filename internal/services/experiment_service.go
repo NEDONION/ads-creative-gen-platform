@@ -27,8 +27,13 @@ type CreateExperimentInput struct {
 }
 
 type ExperimentVariantInput struct {
-	CreativeID string  `json:"creative_id"` // uuid 或 数字字符串
-	Weight     float64 `json:"weight"`      // 0-1
+	CreativeID    string   `json:"creative_id"`              // uuid 或 数字字符串
+	Weight        float64  `json:"weight"`                   // 0-1
+	Title         string   `json:"title,omitempty"`          // 覆盖标题
+	ProductName   string   `json:"product_name,omitempty"`   // 覆盖产品名
+	ImageURL      string   `json:"image_url,omitempty"`      // 覆盖图片URL
+	CTAText       string   `json:"cta_text,omitempty"`       // 覆盖CTA文案
+	SellingPoints []string `json:"selling_points,omitempty"` // 覆盖卖点（用户选择的）
 }
 
 // AssignedVariant 分流结果
@@ -145,17 +150,39 @@ func (s *ExperimentService) CreateExperiment(input CreateExperimentInput) (*mode
 		}
 		acc = end + 1
 
+		// 使用用户覆盖的值，如果没有则使用 asset 的默认值
+		title := v.Title
+		if title == "" {
+			title = asset.Title
+		}
+		productName := v.ProductName
+		if productName == "" {
+			productName = asset.ProductName
+		}
+		imageURL := v.ImageURL
+		if imageURL == "" {
+			imageURL = asset.PublicURL
+		}
+		ctaText := v.CTAText
+		if ctaText == "" {
+			ctaText = asset.CTAText
+		}
+		sellingPoints := v.SellingPoints
+		if len(sellingPoints) == 0 {
+			sellingPoints = asset.SellingPoints
+		}
+
 		variants = append(variants, models.ExperimentVariant{
 			ExperimentID:  exp.ID,
 			CreativeID:    creativeNumericID,
 			Weight:        v.Weight,
 			BucketStart:   start,
 			BucketEnd:     end,
-			Title:         asset.Title,
-			ProductName:   asset.ProductName,
-			ImageURL:      asset.PublicURL,
-			CTAText:       asset.CTAText,
-			SellingPoints: asset.SellingPoints,
+			Title:         title,
+			ProductName:   productName,
+			ImageURL:      imageURL,
+			CTAText:       ctaText,
+			SellingPoints: sellingPoints,
 		})
 	}
 	// 调整最后一个覆盖到 9999

@@ -153,24 +153,51 @@ func (h *ExperimentHandler) Assign(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Assign failed: "+err.Error()))
 		return
 	}
+	// 优先使用 variant 存储的元数据快照（用户选择的覆盖值）
+	// 只有当 variant 字段为空时，才使用 asset 的默认值
 	resp := map[string]interface{}{
 		"creative_id": result.Variant.CreativeID,
 	}
+
+	// Title
+	title := result.Variant.Title
+	if title == "" && result.Asset != nil {
+		title = result.Asset.Title
+	}
+	resp["title"] = title
+
+	// Product Name
+	productName := result.Variant.ProductName
+	if productName == "" && result.Asset != nil {
+		productName = result.Asset.ProductName
+	}
+	resp["product_name"] = productName
+
+	// CTA Text
+	ctaText := result.Variant.CTAText
+	if ctaText == "" && result.Asset != nil {
+		ctaText = result.Asset.CTAText
+	}
+	resp["cta_text"] = ctaText
+
+	// Selling Points - 关键修复：优先使用 variant 的（用户选择的）
+	sellingPoints := result.Variant.SellingPoints
+	if len(sellingPoints) == 0 && result.Asset != nil && result.Asset.Task.ID > 0 {
+		sellingPoints = result.Asset.Task.SellingPoints
+	}
+	resp["selling_points"] = sellingPoints
+
+	// Image URL
+	imageURL := result.Variant.ImageURL
+	if imageURL == "" && result.Asset != nil {
+		imageURL = result.Asset.PublicURL
+	}
+	resp["image_url"] = imageURL
+
+	// Asset 相关信息（如果存在）
 	if result.Asset != nil {
 		resp["asset_uuid"] = result.Asset.UUID
 		resp["task_id"] = result.Asset.TaskID
-		resp["title"] = result.Asset.Title
-		resp["product_name"] = result.Asset.ProductName
-		resp["cta_text"] = result.Asset.CTAText
-		resp["selling_points"] = result.Asset.Task.SellingPoints
-		resp["image_url"] = result.Asset.PublicURL
-	} else {
-		// 使用存储在变体表的元数据
-		resp["title"] = result.Variant.Title
-		resp["product_name"] = result.Variant.ProductName
-		resp["cta_text"] = result.Variant.CTAText
-		resp["selling_points"] = result.Variant.SellingPoints
-		resp["image_url"] = result.Variant.ImageURL
 	}
 	c.JSON(http.StatusOK, SuccessResponse(resp))
 }
