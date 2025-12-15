@@ -16,6 +16,8 @@ temp/
 
 # 依赖
 vendor/
+node_modules/
+web/node_modules/
 
 # 二进制文件
 *.exe
@@ -24,6 +26,8 @@ vendor/
 *.dylib
 bin/
 dist/
+main
+web/dist/
 
 # 环境变量
 .env
@@ -42,3 +46,10 @@ coverage.txt
 
 # MacOS
 .DS_Store
+
+# Fly.io
+.fly/
+fly.toml.bak
+
+# Build artifacts
+*.out

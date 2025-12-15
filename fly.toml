@@ -1,0 +1,48 @@
+# fly.toml app configuration file generated for ads-creative-gen-platform
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+
+app = "ads-creative-gen-platform"
+primary_region = "hkg"  # 香港节点（离中国大陆最近）
+
+# 构建配置
+[build]
+
+# 环境变量（非敏感信息）
+[env]
+  APP_MODE = "release"
+  HTTP_PORT = ":8080"
+  DB_TYPE = "postgres"
+  DB_HOST = "pgm-2ze312q98hvmgxjr7o.pg.rds.aliyuncs.com"
+  DB_PORT = "5432"
+  DB_USER = "nedonion"
+  DB_NAME = "ads_creative_gen_platform"
+  DB_CHARSET = "utf8"
+  TONGYI_IMAGE_MODEL = "wanx-v1"
+  TONGYI_LLM_MODEL = "qwen-turbo"
+  QINIU_BUCKET = "ads-creative-gen-platform"
+  QINIU_REGION = "cn-south-1"
+  QINIU_BASE_PATH = "s3/"
+
+# HTTP 服务配置
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  # 健康检查
+  [http_service.checks]
+    [http_service.checks.alive]
+      type = "http"
+      method = "GET"
+      path = "/health"
+      interval = "30s"
+      timeout = "5s"
+      grace_period = "10s"
+
+# 虚拟机配置
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256
