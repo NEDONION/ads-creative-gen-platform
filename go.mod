@@ -7,7 +7,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/qiniu/go-sdk/v7 v7.25.5
-	gopkg.in/ini.v1 v1.67.0
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1

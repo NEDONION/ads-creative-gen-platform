@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"ads-creative-gen-platform/config"
+	"ads-creative-gen-platform/internal/tracing"
 )
 
 // QwenClient 调用千问 LLM 生成文案
@@ -19,7 +21,7 @@ type QwenClient struct {
 	model   string
 	baseURL string
 	client  *http.Client
-	trace   *TraceService
+	tracer  *tracing.Tracer
 }
 
 // NewQwenClient 创建客户端
@@ -31,7 +33,7 @@ func NewQwenClient() *QwenClient {
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		trace: NewTraceService(),
+		tracer: tracing.NewTracer(),
 	}
 }
 
@@ -74,7 +76,8 @@ func (c *QwenClient) GenerateCopywriting(productName string) (*CopywritingResult
 		return nil, errors.New("product name is required")
 	}
 
-	traceID, _ := c.trace.StartTrace("qwen-llm", c.model, productName, productName)
+	ctx := context.Background()
+	ctx, _ = c.tracer.Start(ctx, "qwen-llm", c.model, productName, productName)
 
 	req := CopywritingRequest{
 		Model: c.model,
@@ -98,29 +101,29 @@ func (c *QwenClient) GenerateCopywriting(productName string) (*CopywritingResult
 	callStart := time.Now()
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
-		_ = c.trace.AddStep(traceID, "llm_call", c.model, "failed", req.Input.Prompt, "", err.Error(), callStart, time.Now())
-		_ = c.trace.FinishTrace(traceID, "failed", "", err.Error())
+		c.tracer.Step(ctx, "llm_call", c.model, "failed", req.Input.Prompt, "", err.Error(), callStart, time.Now())
+		c.tracer.Finish(ctx, "failed", "", err.Error())
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		_ = c.trace.AddStep(traceID, "llm_call", c.model, "failed", req.Input.Prompt, "", err.Error(), callStart, time.Now())
-		_ = c.trace.FinishTrace(traceID, "failed", "", err.Error())
+		c.tracer.Step(ctx, "llm_call", c.model, "failed", req.Input.Prompt, "", err.Error(), callStart, time.Now())
+		c.tracer.Finish(ctx, "failed", "", err.Error())
 		return nil, fmt.Errorf("read response failed: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		_ = c.trace.AddStep(traceID, "llm_call", c.model, "failed", req.Input.Prompt, string(respBytes), fmt.Sprintf("status %d", resp.StatusCode), callStart, time.Now())
-		_ = c.trace.FinishTrace(traceID, "failed", "", fmt.Sprintf("status %d", resp.StatusCode))
+		c.tracer.Step(ctx, "llm_call", c.model, "failed", req.Input.Prompt, string(respBytes), fmt.Sprintf("status %d", resp.StatusCode), callStart, time.Now())
+		c.tracer.Finish(ctx, "failed", "", fmt.Sprintf("status %d", resp.StatusCode))
 		return nil, fmt.Errorf("api error (status %d): %s", resp.StatusCode, string(respBytes))
 	}
 
 	var result CopywritingResponse
 	if err := json.Unmarshal(respBytes, &result); err != nil {
-		_ = c.trace.AddStep(traceID, "llm_call", c.model, "failed", req.Input.Prompt, string(respBytes), err.Error(), callStart, time.Now())
-		_ = c.trace.FinishTrace(traceID, "failed", "", err.Error())
+		c.tracer.Step(ctx, "llm_call", c.model, "failed", req.Input.Prompt, string(respBytes), err.Error(), callStart, time.Now())
+		c.tracer.Finish(ctx, "failed", "", err.Error())
 		return nil, fmt.Errorf("unmarshal response failed: %w", err)
 	}
 
@@ -131,8 +134,8 @@ func (c *QwenClient) GenerateCopywriting(productName string) (*CopywritingResult
 		status = "failed"
 		errMsg = err.Error()
 	}
-	_ = c.trace.AddStep(traceID, "llm_call", c.model, status, req.Input.Prompt, string(respBytes), errMsg, callStart, time.Now())
-	_ = c.trace.FinishTrace(traceID, status, string(respBytes), errMsg)
+	c.tracer.Step(ctx, "llm_call", c.model, status, req.Input.Prompt, string(respBytes), errMsg, callStart, time.Now())
+	c.tracer.Finish(ctx, status, string(respBytes), errMsg)
 	return parsed, err
 }
 

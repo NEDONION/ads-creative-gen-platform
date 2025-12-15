@@ -19,34 +19,11 @@ services:
       timeout: 3s
       retries: 5
 
-  # RabbitMQ (已经在配置文件中配置了)
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: ads_creative_rabbitmq
-    restart: always
-    ports:
-      - "5673:5672"   # AMQP 端口（改为5673避免冲突）
-      - "15673:15672" # 管理界面（改为15673避免冲突）
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - creative_network
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
-    driver: local
-  rabbitmq_data:
     driver: local
 
 networks:

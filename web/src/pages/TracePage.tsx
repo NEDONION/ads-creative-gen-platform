@@ -48,6 +48,7 @@ const TracePage: React.FC = () => {
       setSelected(null);
       return;
     }
+    setSelected(null);
     try {
       const res = await traceAPI.detail(id);
       if (res.code === 0 && res.data) {
@@ -156,111 +157,103 @@ const TracePage: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {traces.map((t) => (
-                          <tr key={t.trace_id}>
-                            <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{t.trace_id}</td>
-                            <td>{t.model_name} {t.model_version && `(${t.model_version})`}</td>
-                            <td>
-                              <span className={`status-badge ${statusColor(t.status)}`}>{t.status}</span>
-                            </td>
-                            <td>{t.duration_ms} ms</td>
-                            <td>{t.start_at ? new Date(t.start_at).toLocaleString() : '-'}</td>
-                            <td>{t.source || '-'}</td>
-                            <td>
-                              <button
-                                className={`compact-btn compact-btn-xs ${selected?.trace_id === t.trace_id ? 'compact-btn-outline' : 'compact-btn-primary'}`}
-                                onClick={() => selectTrace(t.trace_id)}
-                              >
-                                {selected?.trace_id === t.trace_id ? '收起' : '查看'}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                        {traces.map((t) => {
+                          const expanded = selected?.trace_id === t.trace_id;
+                          return (
+                            <React.Fragment key={t.trace_id}>
+                              <tr className={expanded ? 'trace-row-expanded' : ''}>
+                                <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{t.trace_id}</td>
+                                <td>{t.model_name} {t.model_version && `(${t.model_version})`}</td>
+                                <td>
+                                  <span className={`status-badge ${statusColor(t.status)}`}>{t.status}</span>
+                                </td>
+                                <td>{t.duration_ms} ms</td>
+                                <td>{t.start_at ? new Date(t.start_at).toLocaleString() : '-'}</td>
+                                <td>{t.source || '-'}</td>
+                                <td>
+                                  <button
+                                    className={`compact-btn compact-btn-xs ${expanded ? 'compact-btn-outline' : 'compact-btn-primary'}`}
+                                    onClick={() => selectTrace(t.trace_id)}
+                                  >
+                                    {expanded ? '收起' : '查看'}
+                                  </button>
+                                </td>
+                              </tr>
+                              {expanded && selected && (
+                                <tr className="trace-detail-row">
+                                  <td colSpan={7}>
+                                    <div className="trace-detail">
+                                      <div className="trace-detail-meta">
+                                        <div>
+                                          <div className="trace-meta-label">Trace ID</div>
+                                          <div className="trace-meta-value" style={{ fontFamily: 'monospace' }}>{selected.trace_id}</div>
+                                        </div>
+                                        <div>
+                                          <div className="trace-meta-label">状态</div>
+                                          <span className={`status-badge ${statusColor(selected.status)}`}>{selected.status}</span>
+                                        </div>
+                                        <div>
+                                          <div className="trace-meta-label">耗时</div>
+                                          <div className="trace-meta-value">{selected.duration_ms} ms</div>
+                                        </div>
+                                        <div>
+                                          <div className="trace-meta-label">模型</div>
+                                          <div className="trace-meta-value">{selected.model_name} {selected.model_version && `(${selected.model_version})`}</div>
+                                        </div>
+                                        <div>
+                                          <div className="trace-meta-label">开始</div>
+                                          <div className="trace-meta-value">{selected.start_at ? new Date(selected.start_at).toLocaleString() : '-'}</div>
+                                        </div>
+                                        <div>
+                                          <div className="trace-meta-label">结束</div>
+                                          <div className="trace-meta-value">{selected.end_at ? new Date(selected.end_at).toLocaleString() : '-'}</div>
+                                        </div>
+                                        <div>
+                                          <div className="trace-meta-label">来源</div>
+                                          <div className="trace-meta-value">{selected.source || '-'}</div>
+                                        </div>
+                                      </div>
+                                      <div className="trace-steps">
+                                        {(selected.steps || []).map((s, idx) => (
+                                          <div key={idx} className="trace-step-card">
+                                            <div className="trace-step-header">
+                                              <div>
+                                                <div className="trace-step-title">{s.step_name}</div>
+                                                <div className="trace-step-subtitle">{s.component}</div>
+                                              </div>
+                                              <span className={`status-badge ${statusColor(s.status)}`}>{s.status}</span>
+                                            </div>
+                                            <div className="trace-step-meta">
+                                              <span>耗时: {s.duration_ms} ms</span>
+                                              <span>开始: {s.start_at ? new Date(s.start_at).toLocaleTimeString() : '-'}</span>
+                                              <span>结束: {s.end_at ? new Date(s.end_at).toLocaleTimeString() : '-'}</span>
+                                            </div>
+                                            {s.input_preview && (
+                                              <div className="trace-step-text"><strong>输入:</strong> {s.input_preview}</div>
+                                            )}
+                                            {s.output_preview && (
+                                              <div className="trace-step-text"><strong>输出:</strong> {s.output_preview}</div>
+                                            )}
+                                            {s.error_message && (
+                                              <div className="trace-step-text error"><strong>错误:</strong> {s.error_message}</div>
+                                            )}
+                                          </div>
+                                        ))}
+                                        {(selected.steps || []).length === 0 && <div className="trace-step-empty">暂无步骤数据</div>}
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 )}
               </div>
             </div>
-
-            {selected && (
-              <div className="compact-card" style={{ borderColor: '#e6f0ff' }}>
-                <div className="compact-card-header" style={{ alignItems: 'flex-start' }}>
-                  <div>
-                    <h3 className="compact-card-title">链路详情</h3>
-                    <div className="compact-card-hint">trace_id / steps / 时序</div>
-                  </div>
-                  <button className="compact-btn compact-btn-text compact-btn-xs" onClick={() => setSelected(null)}>
-                    收起
-                  </button>
-                </div>
-                <div className="compact-card-body">
-                  <div className="compact-form-grid fancy-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
-                    <div className="compact-form-group">
-                      <label className="compact-label">Trace ID</label>
-                      <div style={{ fontFamily: 'monospace', fontSize: 12 }}>{selected.trace_id}</div>
-                    </div>
-                    <div className="compact-form-group">
-                      <label className="compact-label">状态</label>
-                      <span className={`status-badge ${statusColor(selected.status)}`}>{selected.status}</span>
-                    </div>
-                    <div className="compact-form-group">
-                      <label className="compact-label">耗时</label>
-                      <div>{selected.duration_ms} ms</div>
-                    </div>
-                    <div className="compact-form-group">
-                      <label className="compact-label">模型</label>
-                      <div>{selected.model_name} {selected.model_version && `(${selected.model_version})`}</div>
-                    </div>
-                    <div className="compact-form-group">
-                      <label className="compact-label">开始</label>
-                      <div>{selected.start_at ? new Date(selected.start_at).toLocaleString() : '-'}</div>
-                    </div>
-                    <div className="compact-form-group">
-                      <label className="compact-label">结束</label>
-                      <div>{selected.end_at ? new Date(selected.end_at).toLocaleString() : '-'}</div>
-                    </div>
-                    <div className="compact-form-group">
-                      <label className="compact-label">来源</label>
-                      <div>{selected.source || '-'}</div>
-                    </div>
-                  </div>
-
-                  <div className="compact-section-title" style={{ marginTop: 12 }}>步骤</div>
-                  <div className="compact-form-grid" style={{ gridTemplateColumns: '1fr', gap: 8 }}>
-                    {(selected.steps || []).map((s, idx) => (
-                      <div key={idx} className="compact-card" style={{ padding: 10, border: '1px solid #f0f0f0' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                          <div style={{ fontWeight: 700 }}>{s.step_name} <span style={{ color: '#555', fontSize: 12 }}>· {s.component}</span></div>
-                          <span className={`status-badge ${statusColor(s.status)}`}>{s.status}</span>
-                        </div>
-                        <div style={{ fontSize: 12, color: '#555', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                          <span>耗时: {s.duration_ms} ms</span>
-                          <span>开始: {s.start_at ? new Date(s.start_at).toLocaleTimeString() : '-'}</span>
-                          <span>结束: {s.end_at ? new Date(s.end_at).toLocaleTimeString() : '-'}</span>
-                        </div>
-                        {s.input_preview && (
-                          <div style={{ marginTop: 6, fontSize: 12, color: '#666' }}>
-                            <strong>输入:</strong> {s.input_preview}
-                          </div>
-                        )}
-                        {s.output_preview && (
-                          <div style={{ marginTop: 4, fontSize: 12, color: '#666' }}>
-                            <strong>输出:</strong> {s.output_preview}
-                          </div>
-                        )}
-                        {s.error_message && (
-                          <div style={{ marginTop: 4, fontSize: 12, color: '#d9363e' }}>
-                            <strong>错误:</strong> {s.error_message}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    {(selected.steps || []).length === 0 && <div style={{ color: '#666', fontSize: 13 }}>暂无步骤数据</div>}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

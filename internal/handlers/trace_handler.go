@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"ads-creative-gen-platform/internal/services"
+	"ads-creative-gen-platform/internal/tracing"
 	"net/http"
 	"strconv"
 
@@ -9,12 +9,12 @@ import (
 )
 
 type TraceHandler struct {
-	service *services.TraceService
+	service *tracing.TraceService
 }
 
 func NewTraceHandler() *TraceHandler {
 	return &TraceHandler{
-		service: services.NewTraceService(),
+		service: tracing.NewTraceService(),
 	}
 }
 

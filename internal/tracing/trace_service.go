@@ -1,4 +1,4 @@
-package services
+package tracing
 
 import (
 	"ads-creative-gen-platform/internal/models"
@@ -78,13 +78,14 @@ func (s *TraceService) Detail(traceID string) (*models.ModelTrace, error) {
 func (s *TraceService) StartTrace(modelName, modelVersion, source, inputPreview string) (string, error) {
 	traceID := uuid.New().String()
 	mt := models.ModelTrace{
-		TraceID:      traceID,
-		ModelName:    modelName,
-		ModelVersion: modelVersion,
-		Status:       "running",
-		StartAt:      time.Now(),
-		Source:       source,
-		InputPreview: inputPreview,
+		TraceID:       traceID,
+		ModelName:     modelName,
+		ModelVersion:  modelVersion,
+		Status:        "running",
+		StartAt:       time.Now(),
+		Source:        source,
+		InputPreview:  inputPreview,
+		OutputPreview: "",
 	}
 	if err := database.DB.Create(&mt).Error; err != nil {
 		return "", fmt.Errorf("create trace failed: %w", err)
