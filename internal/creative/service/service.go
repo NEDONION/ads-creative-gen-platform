@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"ads-creative-gen-platform/internal/creative/repository"
 	"ads-creative-gen-platform/internal/infra/llm"
 	"ads-creative-gen-platform/internal/infra/storage"
 	"ads-creative-gen-platform/internal/models"
 	"ads-creative-gen-platform/internal/ports"
+	"ads-creative-gen-platform/internal/settings"
 	"ads-creative-gen-platform/internal/shared"
 	"ads-creative-gen-platform/pkg/database"
 
@@ -33,7 +33,7 @@ func NewCreativeService() *CreativeService {
 	taskRepo := repository.NewTaskRepository(database.DB)
 	assetRepo := repository.NewAssetRepository(database.DB)
 
-	poller := Poller{Interval: 2 * time.Second, MaxAttempts: 60}
+	poller := Poller{Interval: settings.PollInterval, MaxAttempts: settings.MaxPollAttempts}
 
 	return &CreativeService{
 		taskRepo:  taskRepo,
@@ -80,10 +80,10 @@ type CreateTaskInput struct {
 func (s *CreativeService) CreateTask(input CreateTaskInput) (*models.CreativeTask, error) {
 	// 默认值
 	if len(input.Formats) == 0 {
-		input.Formats = []string{"1:1"}
+		input.Formats = []string{settings.DefaultFormat}
 	}
 	if input.NumVariants <= 0 {
-		input.NumVariants = 2 // 以2为基础
+		input.NumVariants = settings.DefaultNumVariants
 	}
 
 	// 创建任务

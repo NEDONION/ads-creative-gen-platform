@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"ads-creative-gen-platform/internal/experiment/service"
+	"ads-creative-gen-platform/internal/models"
 	"ads-creative-gen-platform/internal/shared"
 
 	"github.com/gin-gonic/gin"
@@ -23,16 +24,24 @@ func NewExperimentHandler() *ExperimentHandler {
 
 // CreateExperiment 创建实验
 func (h *ExperimentHandler) CreateExperiment(c *gin.Context) {
-	var req shared.CreateExperimentRequest
+	var req CreateExperimentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Invalid request: "+err.Error()))
 		return
 	}
 
+	var variants []service.ExperimentVariantInput
+	for _, v := range req.Variants {
+		variants = append(variants, service.ExperimentVariantInput{
+			CreativeID: strconv.FormatUint(uint64(v.CreativeID), 10),
+			Weight:     v.Weight,
+		})
+	}
+
 	exp, err := h.service.CreateExperiment(service.CreateExperimentInput{
 		Name:        req.Name,
 		ProductName: req.ProductName,
-		Variants:    req.Variants,
+		Variants:    variants,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Failed to create experiment: "+err.Error()))
@@ -131,12 +140,12 @@ func (h *ExperimentHandler) ListExperiments(c *gin.Context) {
 // UpdateStatus 更新状态
 func (h *ExperimentHandler) UpdateStatus(c *gin.Context) {
 	id := c.Param("id")
-	var req shared.UpdateExperimentStatusRequest
+	var req UpdateExperimentStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Invalid request: "+err.Error()))
 		return
 	}
-	if err := h.service.UpdateStatus(id, req.Status); err != nil {
+	if err := h.service.UpdateStatus(id, models.ExperimentStatus(req.Status)); err != nil {
 		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Failed to update status: "+err.Error()))
 		return
 	}
@@ -207,7 +216,7 @@ func (h *ExperimentHandler) Assign(c *gin.Context) {
 // Hit 曝光
 func (h *ExperimentHandler) Hit(c *gin.Context) {
 	id := c.Param("id")
-	var req shared.TrackRequest
+	var req TrackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Invalid request: "+err.Error()))
 		return
@@ -222,7 +231,7 @@ func (h *ExperimentHandler) Hit(c *gin.Context) {
 // Click 点击
 func (h *ExperimentHandler) Click(c *gin.Context) {
 	id := c.Param("id")
-	var req shared.TrackRequest
+	var req TrackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Invalid request: "+err.Error()))
 		return

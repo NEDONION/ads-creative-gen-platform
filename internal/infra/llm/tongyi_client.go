@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"ads-creative-gen-platform/config"
+	"ads-creative-gen-platform/internal/settings"
 	"ads-creative-gen-platform/internal/tracing"
 )
 
@@ -82,7 +83,7 @@ func (c *TongyiClient) GenerateImage(ctx context.Context, prompt string, size st
 	log.Printf("[通义客户端] 开始生成图片, 提示词: %s, 尺寸: %s, 数量: %d", prompt, size, n)
 
 	if size == "" {
-		size = "1024*1024" // 使用API支持的标准尺寸
+		size = settings.DefaultImageSize // 使用API支持的标准尺寸
 		log.Printf("[通义客户端] 尺寸为空，使用默认尺寸: %s", size)
 	}
 	// 确保使用API支持的尺寸之一
@@ -96,8 +97,8 @@ func (c *TongyiClient) GenerateImage(ctx context.Context, prompt string, size st
 	}
 
 	if !isSupported {
-		log.Printf("[通义客户端] 尺寸 %s 不被支持，回退到默认尺寸: 1024*1024", size)
-		size = "1024*1024" // 如果不支持，回退到默认尺寸
+		log.Printf("[通义客户端] 尺寸 %s 不被支持，回退到默认尺寸: %s", size, settings.DefaultImageSize)
+		size = settings.DefaultImageSize // 如果不支持，回退到默认尺寸
 	}
 
 	if n <= 0 {
@@ -144,7 +145,7 @@ func (c *TongyiClient) GenerateImageWithProduct(ctx context.Context, prompt stri
 	log.Printf("[通义客户端] 开始带商品图生成, 提示词: %s, 商品图URL: %s, 尺寸: %s", prompt, productImageURL, size)
 
 	if size == "" {
-		size = "1024*1024" // 使用API支持的标准尺寸
+		size = settings.DefaultImageSize // 使用API支持的标准尺寸
 		log.Printf("[通义客户端] 尺寸为空，使用默认尺寸: %s", size)
 	}
 	// 确保使用API支持的尺寸之一
@@ -158,8 +159,8 @@ func (c *TongyiClient) GenerateImageWithProduct(ctx context.Context, prompt stri
 	}
 
 	if !isSupported {
-		log.Printf("[通义客户端] 尺寸 %s 不被支持，回退到默认尺寸: 1024*1024", size)
-		size = "1024*1024" // 如果不支持，回退到默认尺寸
+		log.Printf("[通义客户端] 尺寸 %s 不被支持，回退到默认尺寸: %s", size, settings.DefaultImageSize)
+		size = settings.DefaultImageSize // 如果不支持，回退到默认尺寸
 	}
 
 	if n <= 0 {

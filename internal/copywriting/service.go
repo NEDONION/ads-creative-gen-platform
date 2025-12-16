@@ -8,29 +8,32 @@ import (
 	"strings"
 	"unicode"
 
-	"ads-creative-gen-platform/internal/copywriting/repository"
+	creativeRepo "ads-creative-gen-platform/internal/creative/repository"
 	"ads-creative-gen-platform/internal/infra/llm"
 	"ads-creative-gen-platform/internal/models"
+	"ads-creative-gen-platform/internal/ports"
+	"ads-creative-gen-platform/internal/settings"
+	"ads-creative-gen-platform/pkg/database"
 
 	"github.com/google/uuid"
 )
 
 // CopywritingService 负责文案生成与确认
 type CopywritingService struct {
-	qwenClient *llm.QwenClient
-	taskRepo   repository.TaskRepository
+	qwenClient ports.QwenClient
+	taskRepo   ports.TaskRepository
 }
 
 // NewCopywritingService 构造服务
 func NewCopywritingService() *CopywritingService {
 	return &CopywritingService{
 		qwenClient: llm.NewQwenClient(),
-		taskRepo:   repository.NewTaskRepository(),
+		taskRepo:   creativeRepo.NewTaskRepository(database.DB),
 	}
 }
 
 // NewCopywritingServiceWithDeps 支持注入依赖
-func NewCopywritingServiceWithDeps(qwen *llm.QwenClient, repo repository.TaskRepository) *CopywritingService {
+func NewCopywritingServiceWithDeps(qwen ports.QwenClient, repo ports.TaskRepository) *CopywritingService {
 	return &CopywritingService{
 		qwenClient: qwen,
 		taskRepo:   repo,
@@ -86,9 +89,9 @@ func (s *CopywritingService) GenerateCopywriting(input GenerateCopywritingInput)
 		ProductName:            input.ProductName,
 		CTACandidates:          models.StringArray(result.CTAOptions),
 		SellingPointCandidates: models.StringArray(result.SellingPointOptions),
-		RequestedFormats:       models.StringArray{"1:1"},
+		RequestedFormats:       models.StringArray{settings.DefaultFormat},
 		RequestedStyles:        models.StringArray{""},
-		NumVariants:            3,
+		NumVariants:            settings.DefaultNumVariants,
 		Status:                 models.TaskDraft,
 		CopywritingGenerated:   true,
 		CopywritingRaw:         result.RawResponse,
@@ -148,11 +151,11 @@ func (s *CopywritingService) ConfirmCopywriting(input ConfirmCopywritingInput) (
 
 	formats := input.Formats
 	if len(formats) == 0 {
-		formats = []string{"1:1"}
+		formats = []string{settings.DefaultFormat}
 	}
 
 	if input.NumVariants <= 0 {
-		input.NumVariants = 2
+		input.NumVariants = settings.DefaultNumVariants
 	}
 
 	selectedSPIndexes := make(models.StringArray, 0, len(input.SelectedSPIndexes))

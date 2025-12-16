@@ -3,6 +3,7 @@ package ports
 import (
 	"context"
 
+	"ads-creative-gen-platform/internal/infra/llm"
 	"ads-creative-gen-platform/internal/models"
 	"ads-creative-gen-platform/internal/shared"
 )
@@ -10,14 +11,14 @@ import (
 // ===== LLM / VLM Clients =====
 
 type TongyiClient interface {
-	GenerateImage(ctx context.Context, prompt, size string, numImages int, productName, traceID, taskUUID string) (*shared.ImageGenResponse, string, error)
-	GenerateImageWithProduct(ctx context.Context, prompt, productImageURL, size string, numImages int, productName, traceID, taskUUID string) (*shared.ImageGenResponse, string, error)
-	QueryTask(ctx context.Context, traceID, taskID, taskUUID string) (*shared.QueryResp, error)
+	GenerateImage(ctx context.Context, prompt, size string, numImages int, productName, traceID, taskUUID string) (*llm.ImageGenResponse, string, error)
+	GenerateImageWithProduct(ctx context.Context, prompt, productImageURL, size string, numImages int, productName, traceID, taskUUID string) (*llm.ImageGenResponse, string, error)
+	QueryTask(ctx context.Context, traceID, taskID, taskUUID string) (*llm.ImageGenResponse, error)
 	FinishTrace(traceID, status, url, msg string)
 }
 
 type QwenClient interface {
-	GenerateCopywriting(productName string, language string) (*shared.CopywritingResult, error)
+	GenerateCopywriting(productName string, language string) (*llm.CopywritingResult, error)
 }
 
 // ===== Storage =====
