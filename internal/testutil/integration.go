@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -20,9 +19,6 @@ var once sync.Once
 func EnsureIntegrationDB(t *testing.T) {
 	if t != nil {
 		t.Helper()
-	}
-	if t != nil && os.Getenv("DB_NAME") == "" {
-		t.Skip("缺少 DB_NAME，跳过集成测试")
 	}
 	once.Do(func() {
 		config.LoadConfig()

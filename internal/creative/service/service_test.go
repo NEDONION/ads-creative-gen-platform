@@ -6,12 +6,11 @@ import (
 )
 
 func TestGeneratePromptIncludesTitleAndSellingPoints(t *testing.T) {
-	svc := &CreativeService{}
 	title := "Test Product"
 	selling := []string{"fast", "light"}
 	style := "modern"
 
-	prompt := svc.generatePrompt(title, selling, style)
+	prompt := generatePrompt(title, selling, style)
 	if !strings.Contains(prompt, title) {
 		t.Fatalf("prompt missing title: %s", prompt)
 	}

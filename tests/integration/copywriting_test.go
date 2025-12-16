@@ -1,20 +1,19 @@
 //go:build integration
-// +build integration
 
-package copywriting
+package integration
 
 import (
 	"testing"
 
+	"ads-creative-gen-platform/internal/copywriting"
 	"ads-creative-gen-platform/internal/models"
 	"ads-creative-gen-platform/internal/testutil"
 
 	"github.com/google/uuid"
 )
 
-// TestIntegration_ConfirmCopywriting 验证确认文案流程更新任务字段（不调用外部 LLM）。
-func TestIntegration_ConfirmCopywriting(t *testing.T) {
-	testutil.EnsureIntegrationDB(t)
+// TestCopywriting_Confirm 验证确认文案流程更新任务字段（不调用外部 LLM）。
+func TestCopywriting_Confirm(t *testing.T) {
 	testutil.ResetTables(t, []string{
 		"TRUNCATE creative_assets CASCADE",
 		"TRUNCATE creative_tasks CASCADE",
@@ -39,8 +38,8 @@ func TestIntegration_ConfirmCopywriting(t *testing.T) {
 		t.Fatalf("预置任务失败: %v", err)
 	}
 
-	svc := &CopywritingService{} // 不调用 Generate，不需要 LLM
-	updated, err := svc.ConfirmCopywriting(ConfirmCopywritingInput{
+	svc := &copywriting.CopywritingService{} // 不调用 Generate，不需要 LLM
+	updated, err := svc.ConfirmCopywriting(copywriting.ConfirmCopywritingInput{
 		TaskID:            task.UUID,
 		SelectedCTAIndex:  1,
 		SelectedSPIndexes: []int{0, 1},

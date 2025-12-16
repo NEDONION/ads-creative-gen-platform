@@ -1,25 +1,37 @@
 //go:build integration
-// +build integration
 
-package service
+package integration
 
 import (
 	"strconv"
 	"testing"
 
 	"ads-creative-gen-platform/internal/experiment/repository"
+	"ads-creative-gen-platform/internal/experiment/service"
 	"ads-creative-gen-platform/internal/models"
 	"ads-creative-gen-platform/internal/testutil"
 
 	"github.com/google/uuid"
 )
 
-// ensureAsset 创建一个可用的素材供实验引用。
+// ensureAsset 创建可用的素材及其所属任务。
 func ensureAsset(t *testing.T) models.CreativeAsset {
 	t.Helper()
+
+	user := testutil.CreateTestUser(t)
+	task := models.CreativeTask{
+		UUIDModel: models.UUIDModel{UUID: uuid.New().String()},
+		UserID:    user.ID,
+		Title:     "asset-task",
+		Status:    models.TaskDraft,
+	}
+	if err := testutil.DB().Create(&task).Error; err != nil {
+		t.Fatalf("预置任务失败: %v", err)
+	}
+
 	asset := models.CreativeAsset{
 		UUIDModel: models.UUIDModel{UUID: uuid.New().String()},
-		TaskID:    1,
+		TaskID:    task.ID,
 		Format:    "1:1",
 		Width:     1024,
 		Height:    1024,
@@ -31,25 +43,26 @@ func ensureAsset(t *testing.T) models.CreativeAsset {
 	return asset
 }
 
-// TestIntegration_ExperimentFlow 覆盖创建实验、状态变更、分流、埋点、指标汇总的端到端流程（依赖真实数据库）。
-func TestIntegration_ExperimentFlow(t *testing.T) {
-	testutil.EnsureIntegrationDB(t)
+// TestExperiment_Flow 覆盖创建实验、状态变更、分流、埋点、指标汇总的端到端流程（依赖真实数据库）。
+func TestExperiment_Flow(t *testing.T) {
 	testutil.ResetTables(t, []string{
 		"TRUNCATE experiment_metrics CASCADE",
 		"TRUNCATE experiment_variants CASCADE",
 		"TRUNCATE experiments CASCADE",
 		"TRUNCATE creative_assets CASCADE",
+		"TRUNCATE creative_tasks CASCADE",
+		"TRUNCATE users CASCADE",
 	})
 
 	asset := ensureAsset(t)
 
 	repo := repository.NewExperimentRepository()
-	svc := NewExperimentServiceWithRepo(repo)
+	svc := service.NewExperimentServiceWithRepo(repo)
 
-	exp, err := svc.CreateExperiment(CreateExperimentInput{
+	exp, err := svc.CreateExperiment(service.CreateExperimentInput{
 		Name:        "integration-exp",
 		ProductName: "Test Product",
-		Variants: []ExperimentVariantInput{
+		Variants: []service.ExperimentVariantInput{
 			{CreativeID: uuidOrID(asset), Weight: 0.6},
 			{CreativeID: uuidOrID(asset), Weight: 0.4},
 		},
@@ -58,7 +71,6 @@ func TestIntegration_ExperimentFlow(t *testing.T) {
 		t.Fatalf("CreateExperiment 失败: %v", err)
 	}
 
-	// 激活实验并分流
 	if err := svc.UpdateStatus(exp.UUID, models.ExpActive); err != nil {
 		t.Fatalf("UpdateStatus 失败: %v", err)
 	}
@@ -71,7 +83,6 @@ func TestIntegration_ExperimentFlow(t *testing.T) {
 		t.Fatalf("Assign 返回为空或缺少素材: %#v", assigned)
 	}
 
-	// 埋点曝光与点击
 	if err := svc.Hit(exp.UUID, assigned.Variant.CreativeID); err != nil {
 		t.Fatalf("Hit 失败: %v", err)
 	}
@@ -79,12 +90,11 @@ func TestIntegration_ExperimentFlow(t *testing.T) {
 		t.Fatalf("Click 失败: %v", err)
 	}
 
-	// 校验指标
 	dto, err := svc.GetMetrics(exp.UUID)
 	if err != nil {
 		t.Fatalf("GetMetrics 失败: %v", err)
 	}
-	metrics, ok := dto.(*ExperimentMetricsDTO)
+	metrics, ok := dto.(*service.ExperimentMetricsDTO)
 	if !ok {
 		t.Fatalf("Metrics 返回类型不符: %T", dto)
 	}
