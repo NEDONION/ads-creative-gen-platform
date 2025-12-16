@@ -19,7 +19,10 @@ func TestIntegration_Creative_CreateListDelete(t *testing.T) {
 	testutil.ResetTables(t, []string{
 		"TRUNCATE creative_assets CASCADE",
 		"TRUNCATE creative_tasks CASCADE",
+		"TRUNCATE users CASCADE",
 	})
+
+	user := testutil.CreateTestUser(t)
 
 	taskRepo := repository.NewTaskRepository(testutil.DB())
 	assetRepo := repository.NewAssetRepository(testutil.DB())
@@ -27,7 +30,7 @@ func TestIntegration_Creative_CreateListDelete(t *testing.T) {
 	svc := NewCreativeServiceWithDeps(nil, nil, taskRepo, assetRepo, func(uint) error { return nil })
 
 	task, err := svc.CreateTask(CreateTaskInput{
-		UserID:        1,
+		UserID:        user.ID,
 		Title:         "集成测试任务",
 		SellingPoints: []string{"亮点A", "亮点B"},
 		Formats:       []string{"1:1"},
@@ -65,6 +68,7 @@ func TestIntegration_Creative_StartOnly(t *testing.T) {
 	testutil.ResetTables(t, []string{
 		"TRUNCATE creative_tasks CASCADE",
 		"TRUNCATE creative_assets CASCADE",
+		"TRUNCATE users CASCADE",
 	})
 
 	taskRepo := repository.NewTaskRepository(testutil.DB())
@@ -73,8 +77,11 @@ func TestIntegration_Creative_StartOnly(t *testing.T) {
 
 	svc := NewCreativeServiceWithDeps(nil, nil, taskRepo, assetRepo, func(id uint) error { enqueued = id; return nil })
 
+	user := testutil.CreateTestUser(t)
+
 	task := models.CreativeTask{
 		UUIDModel: models.UUIDModel{UUID: uuid.New().String()},
+		UserID:    user.ID,
 		Title:     "start-test",
 		Status:    models.TaskDraft,
 	}

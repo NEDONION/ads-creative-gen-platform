@@ -16,11 +16,16 @@ import (
 func TestIntegration_ConfirmCopywriting(t *testing.T) {
 	testutil.EnsureIntegrationDB(t)
 	testutil.ResetTables(t, []string{
+		"TRUNCATE creative_assets CASCADE",
 		"TRUNCATE creative_tasks CASCADE",
+		"TRUNCATE users CASCADE",
 	})
+
+	user := testutil.CreateTestUser(t)
 
 	task := models.CreativeTask{
 		UUIDModel: models.UUIDModel{UUID: uuid.New().String()},
+		UserID:    user.ID,
 		Title:     "cw-test",
 		Status:    models.TaskDraft,
 		CTACandidates: models.StringArray{
