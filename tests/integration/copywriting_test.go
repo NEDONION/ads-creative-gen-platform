@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"ads-creative-gen-platform/internal/copywriting"
-	"ads-creative-gen-platform/internal/copywriting/repository"
+	crepo "ads-creative-gen-platform/internal/creative/repository"
 	"ads-creative-gen-platform/internal/models"
 	"ads-creative-gen-platform/internal/testutil"
 
@@ -39,7 +39,7 @@ func TestCopywriting_Confirm(t *testing.T) {
 		t.Fatalf("预置任务失败: %v", err)
 	}
 
-	svc := copywriting.NewCopywritingServiceWithDeps(nil, repository.NewTaskRepository())
+	svc := copywriting.NewCopywritingServiceWithDeps(nil, crepo.NewTaskRepository(testutil.DB()))
 	updated, err := svc.ConfirmCopywriting(copywriting.ConfirmCopywritingInput{
 		TaskID:            task.UUID,
 		SelectedCTAIndex:  1,

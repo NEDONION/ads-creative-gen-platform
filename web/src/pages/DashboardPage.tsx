@@ -98,29 +98,6 @@ interface ActivityEntry {
   timestamp: number;
 }
 
-const formatRelativeTime = (dateString?: string) => {
-  if (!dateString) return '-';
-  const date = new Date(dateString);
-  const ts = date.getTime();
-  if (!Number.isFinite(ts)) return dateString;
-
-  const diffMs = Date.now() - ts;
-  const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return '刚刚';
-  if (minutes < 60) return `${minutes} 分钟前`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} 天前`;
-
-  return date.toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
 const shortId = (id?: string) => {
   if (!id) return '-';
   if (id.length <= 8) return id;
@@ -133,32 +110,10 @@ const parseTimestamp = (value?: string) => {
   return Number.isFinite(ts) ? ts : 0;
 };
 
-const getTaskStatusText = (status?: string) => {
-  const map: Record<string, string> = {
-    pending: '待处理',
-    queued: '排队中',
-    processing: '处理中',
-    completed: '已完成',
-    failed: '失败',
-    cancelled: '已取消',
-  };
-  return map[status || ''] || status || '';
-};
-
-const getExperimentStatusText = (status?: string) => {
-  const map: Record<string, string> = {
-    active: '进行中',
-    archived: '已归档',
-    draft: '草稿',
-    completed: '已完成',
-  };
-  return map[status || ''] || status || '已更新';
-};
-
 // 主 Dashboard 组件
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [totalAssets, setTotalAssets] = useState(0);
   const [totalTasks, setTotalTasks] = useState(0);
   const [totalExperiments, setTotalExperiments] = useState(0);
@@ -166,6 +121,51 @@ const DashboardPage: React.FC = () => {
   const [activities, setActivities] = useState<ActivityEntry[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
+
+  const formatRelativeTime = (dateString?: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    const ts = date.getTime();
+    if (!Number.isFinite(ts)) return dateString;
+
+    const diffMs = Date.now() - ts;
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes < 1) return t('timeJustNow');
+    if (minutes < 60) return t('timeMinutesAgo').replace('{n}', String(minutes));
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return t('timeHoursAgo').replace('{n}', String(hours));
+    const days = Math.floor(hours / 24);
+    if (days < 7) return t('timeDaysAgo').replace('{n}', String(days));
+
+    return date.toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getTaskStatusText = (status?: string) => {
+    const map: Record<string, string> = {
+      pending: t('taskStatusPending'),
+      queued: t('taskStatusQueued'),
+      processing: t('taskStatusProcessing'),
+      completed: t('taskStatusCompleted'),
+      failed: t('taskStatusFailed'),
+      cancelled: t('taskStatusCancelled'),
+    };
+    return map[status || ''] || status || '';
+  };
+
+  const getExperimentStatusText = (status?: string) => {
+    const map: Record<string, string> = {
+      active: t('experimentStatusActive'),
+      archived: t('experimentStatusArchived'),
+      draft: t('experimentStatusDraft'),
+      completed: t('experimentStatusCompleted'),
+    };
+    return map[status || ''] || t('experimentStatusUpdated');
+  };
 
   useEffect(() => {
     loadStats();
@@ -212,7 +212,9 @@ const DashboardPage: React.FC = () => {
         return {
           id: task.id,
           type: 'task',
-          message: `任务 ${shortId(task.id)} ${getTaskStatusText(task.status)}`,
+          message: t('activityTaskMessage')
+            .replace('{id}', shortId(task.id))
+            .replace('{status}', getTaskStatusText(task.status)),
           time: formatRelativeTime(task.completed_at || task.created_at),
           timestamp,
         };
@@ -220,11 +222,11 @@ const DashboardPage: React.FC = () => {
 
       const assetActivities: ActivityEntry[] = (assetsRes.data?.assets || []).map((asset) => {
         const timestamp = parseTimestamp(asset.created_at || asset.updated_at);
-        const label = asset.title || asset.product_name || '创意';
+        const label = asset.title || asset.product_name || t('headerCreative');
         return {
           id: asset.id,
           type: 'asset',
-          message: `${label} 素材已生成`,
+          message: t('activityAssetMessage').replace('{name}', label),
           time: formatRelativeTime(asset.created_at || asset.updated_at),
           timestamp,
         };
@@ -236,7 +238,9 @@ const DashboardPage: React.FC = () => {
         return {
           id: exp.experiment_id,
           type: 'experiment',
-          message: `实验 ${displayName} ${getExperimentStatusText(exp.status)}`,
+          message: t('activityExperimentMessage')
+            .replace('{name}', displayName)
+            .replace('{status}', getExperimentStatusText(exp.status)),
           time: formatRelativeTime(exp.start_at || exp.created_at),
           timestamp,
         };
@@ -250,7 +254,7 @@ const DashboardPage: React.FC = () => {
       setActivities(merged);
     } catch (err) {
       console.error('Load activities error:', err);
-      setActivityError('加载最近活动失败');
+      setActivityError(t('activityLoadFailed'));
     } finally {
       setActivityLoading(false);
     }

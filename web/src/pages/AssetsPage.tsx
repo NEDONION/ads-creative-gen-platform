@@ -6,7 +6,7 @@ import LanguageSwitch from '../components/LanguageSwitch';
 import { useI18n } from '../i18n';
 
 const AssetsPage: React.FC = () => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [assets, setAssets] = useState<AssetData[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -33,7 +33,7 @@ const AssetsPage: React.FC = () => {
       }
     }
     loadAssets();
-  }, [currentPage]);
+  }, [currentPage, t]);
 
   const loadAssets = async (force?: boolean) => {
     if (!force) {
@@ -78,10 +78,10 @@ const AssetsPage: React.FC = () => {
           })
         );
       } else {
-        setError(response.message || '获取素材列表失败');
+        setError(response.message || t('loadAssetsFailed'));
       }
     } catch (err) {
-      setError('加载素材失败: ' + (err as Error).message);
+      setError(t('loadAssetsError').replace('{msg}', (err as Error).message));
       console.error('Load assets error:', err);
     } finally {
       setLoading(false);
@@ -99,7 +99,7 @@ const AssetsPage: React.FC = () => {
     const map = new Map<string, number>();
 
     assets.forEach((asset) => {
-      const key = asset.product_name || asset.title || '未命名创意';
+      const key = asset.product_name || asset.title || t('unnamedCreative');
       const idx = map.get(key);
       if (idx === undefined) {
         map.set(key, groups.length);
@@ -117,7 +117,7 @@ const AssetsPage: React.FC = () => {
       }
     });
     return groups;
-  }, [assets]);
+  }, [assets, lang, t]);
 
 
   return (
@@ -181,12 +181,14 @@ const AssetsPage: React.FC = () => {
                         <div className="group-header">
                           <div>
                             <div className="group-title">{group.productName}</div>
-                            {group.ctaText && <div className="group-sub">CTA：{group.ctaText}</div>}
+                            {group.ctaText && <div className="group-sub">{t('cta')}: {group.ctaText}</div>}
                             {group.sellingPoints && group.sellingPoints.length > 0 && (
-                              <div className="group-sub">{t('sellingPointsLabel')}：{group.sellingPoints.join('、')}</div>
+                              <div className="group-sub">
+                                {t('sellingPointsLabel')}: {group.sellingPoints.join(lang === 'zh' ? '、' : ', ')}
+                              </div>
                             )}
                           </div>
-                          <div className="group-badge">{group.assets.length} 张</div>
+                          <div className="group-badge">{t('assetCountBadge').replace('{n}', String(group.assets.length))}</div>
                         </div>
                         <div className="compact-assets-vertical">
                           {group.assets.map((asset) => (
@@ -198,7 +200,7 @@ const AssetsPage: React.FC = () => {
                                   <code className="compact-asset-id">{asset.id.substring(0, 8)}...</code>
                                 </div>
                                 <div className="meta-right">
-                                  {asset.style && <span className="summary-chip">风格: {asset.style}</span>}
+                                  {asset.style && <span className="summary-chip">{t('styleTag').replace('{style}', asset.style)}</span>}
                                 </div>
                               </div>
                               <div className="vertical-body">
@@ -210,7 +212,7 @@ const AssetsPage: React.FC = () => {
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement;
                                       target.src =
-                                        'data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"280\" height=\"320\" viewBox=\"0 0 280 320\"><rect width=\"280\" height=\"320\" fill=\"%23f5f5f5\"/><text x=\"140\" y=\"160\" font-family=\"Arial\" font-size=\"11\" text-anchor=\"middle\" fill=\"%23999\">素材图片</text></svg>';
+                                        `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="280" height="320" viewBox="0 0 280 320"><rect width="280" height="320" fill="%23f5f5f5"/><text x="140" y="160" font-family="Arial" font-size="11" text-anchor="middle" fill="%23999">${t('assetPlaceholder')}</text></svg>`;
                                     }}
                                   />
                                 </div>
@@ -230,7 +232,7 @@ const AssetsPage: React.FC = () => {
                                   {asset.selling_points && asset.selling_points.length > 0 && (
                                     <div className="info-row">
                                       <span className="label">{t('sellingPointsLabel')}</span>
-                                      <span className="value">{asset.selling_points.join(' / ')}</span>
+                                      <span className="value">{asset.selling_points.join(lang === 'zh' ? '、' : ' / ')}</span>
                                     </div>
                                   )}
                                 </div>
