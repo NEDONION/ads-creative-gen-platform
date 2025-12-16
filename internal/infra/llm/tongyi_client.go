@@ -1,4 +1,4 @@
-package services
+package llm
 
 import (
 	"bytes"
@@ -293,4 +293,12 @@ func (c *TongyiClient) QueryTask(ctx context.Context, traceID string, taskID str
 	}
 
 	return &result, nil
+}
+
+// FinishTrace 结束链路跟踪
+func (c *TongyiClient) FinishTrace(traceID, status, outputPreview, errorMessage string) {
+	if c == nil || c.tracer == nil {
+		return
+	}
+	c.tracer.FinishTrace(traceID, status, outputPreview, errorMessage)
 }

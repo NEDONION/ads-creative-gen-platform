@@ -1,11 +1,60 @@
-package handlers
+package shared
 
 import (
+	expuc "ads-creative-gen-platform/internal/experiment/service"
 	"ads-creative-gen-platform/internal/models"
-	"ads-creative-gen-platform/internal/services"
 )
 
-// GenerateRequest 创意生成请求
+// ===== Query DTOs =====
+
+type ListTasksQuery struct {
+	Page     int    `json:"page"`
+	PageSize int    `json:"page_size"`
+	Status   string `json:"status"`
+	UserID   uint   `json:"user_id"`
+}
+
+type ListAssetsQuery struct {
+	Page     int    `json:"page"`
+	PageSize int    `json:"page_size"`
+	Format   string `json:"format"`
+	TaskID   string `json:"task_id"`
+}
+
+// ===== LLM / VLM DTOs =====
+
+type ImageGenResponse struct {
+	Output struct {
+		TaskID     string `json:"task_id"`
+		TaskStatus string `json:"task_status"`
+		Results    []struct {
+			URL string `json:"url"`
+		} `json:"results"`
+		Message string `json:"message"`
+	} `json:"output"`
+	RequestID string `json:"request_id"`
+}
+
+type QueryResp struct {
+	Output struct {
+		TaskID     string `json:"task_id"`
+		TaskStatus string `json:"task_status"`
+		Message    string `json:"message"`
+		Results    []struct {
+			URL string `json:"url"`
+		} `json:"results"`
+	} `json:"output"`
+	RequestID string `json:"request_id"`
+}
+
+type CopywritingResult struct {
+	CTAOptions          []string `json:"cta_options"`
+	SellingPointOptions []string `json:"selling_point_options"`
+	RawResponse         string   `json:"-"`
+}
+
+// ===== API DTOs =====
+
 type GenerateRequest struct {
 	Title           string   `json:"title" binding:"required"`
 	SellingPoints   []string `json:"selling_points"`
@@ -16,20 +65,17 @@ type GenerateRequest struct {
 	NumVariants     int      `json:"num_variants"`
 }
 
-// GenerateResponse 创意生成响应
 type GenerateResponse struct {
 	Code    int         `json:"code"`
 	Message string      `json:"message,omitempty"`
 	Data    interface{} `json:"data,omitempty"`
 }
 
-// GenerateCopywritingRequest 文案生成请求
 type GenerateCopywritingRequest struct {
 	ProductName string `json:"product_name" binding:"required"`
 	Language    string `json:"language,omitempty"`
 }
 
-// ConfirmCopywritingRequest 文案确认请求
 type ConfirmCopywritingRequest struct {
 	TaskID            string   `json:"task_id" binding:"required"`
 	SelectedCTAIndex  int      `json:"selected_cta_index"`
@@ -42,7 +88,6 @@ type ConfirmCopywritingRequest struct {
 	Formats           []string `json:"formats"`
 }
 
-// StartCreativeRequest 启动创意生成请求
 type StartCreativeRequest struct {
 	TaskID          string              `json:"task_id" binding:"required"`
 	ProductImageURL string              `json:"product_image_url,omitempty"`
@@ -52,17 +97,15 @@ type StartCreativeRequest struct {
 	VariantConfigs  []TaskVariantConfig `json:"variant_configs,omitempty"`
 }
 
-// TaskVariantConfig 单个变体配置
 type TaskVariantConfig struct {
 	Style  string `json:"style,omitempty"`
 	Prompt string `json:"prompt,omitempty"`
 }
 
-// Experiment DTOs
 type CreateExperimentRequest struct {
-	Name        string                            `json:"name" binding:"required"`
-	ProductName string                            `json:"product_name"`
-	Variants    []services.ExperimentVariantInput `json:"variants" binding:"required"`
+	Name        string                         `json:"name" binding:"required"`
+	ProductName string                         `json:"product_name"`
+	Variants    []expuc.ExperimentVariantInput `json:"variants" binding:"required"`
 }
 
 type UpdateExperimentStatusRequest struct {
@@ -73,13 +116,11 @@ type TrackRequest struct {
 	CreativeID uint `json:"creative_id" binding:"required"`
 }
 
-// TaskData 任务数据
 type TaskData struct {
 	TaskID string `json:"task_id"`
 	Status string `json:"status"`
 }
 
-// TaskDetailData 任务详情数据
 type TaskDetailData struct {
 	TaskID           string         `json:"task_id"`
 	Status           string         `json:"status"`
@@ -100,7 +141,6 @@ type TaskDetailData struct {
 	VariantStyles    []string       `json:"variant_styles,omitempty"`
 }
 
-// CreativeData 创意数据
 type CreativeData struct {
 	ID               string   `json:"id"`
 	Format           string   `json:"format"`
@@ -117,7 +157,7 @@ type CreativeData struct {
 	GenerationPrompt string   `json:"generation_prompt,omitempty"`
 }
 
-// Response 工具函数
+// Response helpers
 func SuccessResponse(data interface{}) GenerateResponse {
 	return GenerateResponse{
 		Code: 0,

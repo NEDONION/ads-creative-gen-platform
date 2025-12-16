@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"context"
@@ -8,7 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"ads-creative-gen-platform/internal/creative/repository"
+	"ads-creative-gen-platform/internal/infra/llm"
+	"ads-creative-gen-platform/internal/infra/storage"
 	"ads-creative-gen-platform/internal/models"
+	"ads-creative-gen-platform/internal/ports"
+	"ads-creative-gen-platform/internal/shared"
 	"ads-creative-gen-platform/pkg/database"
 
 	"github.com/google/uuid"
@@ -16,16 +21,43 @@ import (
 
 // CreativeService 创意生成服务
 type CreativeService struct {
-	tongyiClient *TongyiClient
-	qiniuService *QiniuService
+	tongyiClient *llm.TongyiClient
+	qiniuService *storage.QiniuClient
+	taskRepo     ports.TaskRepository
+	assetRepo    ports.AssetRepository
+	enqueueFunc  func(taskID uint) error
 }
 
 // NewCreativeService 创建服务
 func NewCreativeService() *CreativeService {
 	return &CreativeService{
-		tongyiClient: NewTongyiClient(),
-		qiniuService: NewQiniuService(),
+		tongyiClient: llm.NewTongyiClient(),
+		qiniuService: storage.NewQiniuClient(),
+		taskRepo:     repository.NewTaskRepository(database.DB),
+		assetRepo:    repository.NewAssetRepository(database.DB),
 	}
+}
+
+// NewCreativeServiceWithDeps 支持依赖注入
+func NewCreativeServiceWithDeps(
+	tongyi *llm.TongyiClient,
+	qiniu *storage.QiniuClient,
+	taskRepo ports.TaskRepository,
+	assetRepo ports.AssetRepository,
+	enqueue func(taskID uint) error,
+) *CreativeService {
+	return &CreativeService{
+		tongyiClient: tongyi,
+		qiniuService: qiniu,
+		taskRepo:     taskRepo,
+		assetRepo:    assetRepo,
+		enqueueFunc:  enqueue,
+	}
+}
+
+// SetEnqueuer 设置任务入队方法（便于外部注入 Runner）
+func (s *CreativeService) SetEnqueuer(enqueue func(taskID uint) error) {
+	s.enqueueFunc = enqueue
 }
 
 // CreateTaskInput 创建任务输入
@@ -72,76 +104,161 @@ func (s *CreativeService) CreateTask(input CreateTaskInput) (*models.CreativeTas
 	}
 
 	// 保存到数据库
-	if err := database.DB.Create(&task).Error; err != nil {
+	if err := s.taskRepo.Create(context.Background(), &task); err != nil {
 		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
 
-	// 异步处理任务
-	go s.processTask(task.ID)
+	// 异步处理任务：优先使用 Runner
+	if s.enqueueFunc != nil {
+		_ = s.enqueueFunc(task.ID)
+	} else {
+		go s.processTask(task.ID)
+	}
 
 	return &task, nil
 }
 
+// StartCreativeOptions 启动创意生成选项
+type StartCreativeOptions struct {
+	ProductImageURL string
+	Style           string
+	NumVariants     int
+	Formats         []string
+	VariantPrompts  []string
+	VariantStyles   []string
+}
+
+// StartCreativeGeneration 根据已有任务启动生成
+func (s *CreativeService) StartCreativeGeneration(taskUUID string, opts *StartCreativeOptions) error {
+	if taskUUID == "" {
+		return errors.New("task_id is required")
+	}
+	task, err := s.taskRepo.GetByUUID(context.Background(), taskUUID)
+	if err != nil {
+		return fmt.Errorf("task not found: %w", err)
+	}
+
+	updates := map[string]interface{}{
+		"status":       models.TaskPending,
+		"progress":     0,
+		"started_at":   nil,
+		"completed_at": nil,
+	}
+	if opts != nil {
+		if opts.ProductImageURL != "" {
+			updates["product_image_url"] = opts.ProductImageURL
+		}
+		if opts.Style != "" {
+			updates["requested_styles"] = models.StringArray{opts.Style}
+		}
+		if opts.NumVariants > 0 {
+			updates["num_variants"] = opts.NumVariants
+		}
+		if len(opts.Formats) > 0 {
+			updates["requested_formats"] = models.StringArray(opts.Formats)
+		}
+		if len(opts.VariantPrompts) > 0 {
+			updates["variant_prompts"] = models.StringArray(opts.VariantPrompts)
+		}
+		if len(opts.VariantStyles) > 0 {
+			updates["variant_styles"] = models.StringArray(opts.VariantStyles)
+		}
+	}
+
+	if err := s.taskRepo.UpdateFields(context.Background(), task.ID, updates); err != nil {
+		return fmt.Errorf("failed to update task: %w", err)
+	}
+
+	if s.enqueueFunc != nil {
+		return s.enqueueFunc(task.ID)
+	}
+	go s.processTask(task.ID)
+	return nil
+}
+
+// GetTask 查询任务详情（含资产）
+func (s *CreativeService) GetTask(taskUUID string) (*models.CreativeTask, error) {
+	if taskUUID == "" {
+		return nil, errors.New("task_id is required")
+	}
+	task, err := s.taskRepo.GetByUUIDWithAssets(context.Background(), taskUUID)
+	if err != nil {
+		return nil, fmt.Errorf("task not found: %w", err)
+	}
+	return task, nil
+}
+
 // processTask 处理任务
 func (s *CreativeService) processTask(taskID uint) {
+	s.processTaskWithContext(context.Background(), taskID)
+}
+
+// ProcessTaskWithContext 对外暴露的带 context 的处理入口
+func (s *CreativeService) ProcessTaskWithContext(ctx context.Context, taskID uint) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	s.processTaskWithContext(ctx, taskID)
+}
+
+func (s *CreativeService) processTaskWithContext(ctx context.Context, taskID uint) {
 	// 更新状态为处理中
 	now := time.Now()
-	updateResult := database.DB.Model(&models.CreativeTask{}).Where("id = ?", taskID).Updates(map[string]interface{}{
+	updateResult := s.taskRepo.UpdateFields(ctx, taskID, map[string]interface{}{
 		"status":     models.TaskProcessing,
 		"started_at": now,
 		"progress":   10,
 	})
 
-	if updateResult.Error != nil {
-		log.Printf("更新任务状态失败: %v", updateResult.Error)
+	if updateResult != nil {
+		log.Printf("更新任务状态失败: %v", updateResult)
 		return
 	}
 
 	// 查询任务详情
-	var task models.CreativeTask
-	if err := database.DB.First(&task, taskID).Error; err != nil {
+	task, err := s.taskRepo.GetByID(ctx, taskID)
+	if err != nil {
 		log.Printf("查找任务 %d 失败: %v", taskID, err)
 		return
 	}
 
 	// 如果有针对每个变体的提示词/风格配置，逐个生成
 	if len(task.VariantPrompts) > 0 || len(task.VariantStyles) > 1 {
-		s.processTaskPerVariant(task)
+		s.processTaskPerVariant(ctx, task)
 		return
 	}
 
 	// 生成提示词
 	prompt := s.generatePrompt(task.Title, task.SellingPoints, styleAt(task.RequestedStyles, 0))
 	log.Printf("生成的提示词: %s", prompt)
-	database.DB.Model(&task).Update("prompt_used", prompt)
+	_ = s.taskRepo.UpdateFields(ctx, task.ID, map[string]interface{}{"prompt_used": prompt})
 
 	// 更新进度
-	database.DB.Model(&task).Update("progress", 30)
+	_ = s.taskRepo.UpdateProgress(ctx, task.ID, 30)
 
 	// 调用通义万相生成图片
-	var resp *ImageGenResponse
-	var err error
+	var resp *llm.ImageGenResponse
 	var traceID string
 
 	if task.ProductImageURL != "" {
 		// 带商品图生成
 		log.Printf("开始带商品图生成: %s", task.ProductImageURL)
-		resp, traceID, err = s.tongyiClient.GenerateImageWithProduct(context.Background(), prompt, task.ProductImageURL, "1024*1024", task.NumVariants, task.ProductName, "", task.ProductName)
+		resp, traceID, err = s.tongyiClient.GenerateImageWithProduct(ctx, prompt, task.ProductImageURL, "1024*1024", task.NumVariants, task.ProductName, "", task.ProductName)
 	} else {
 		// 纯文本生成
 		log.Printf("开始纯文本图像生成")
-		resp, traceID, err = s.tongyiClient.GenerateImage(context.Background(), prompt, "1024*1024", task.NumVariants, task.ProductName, "", task.ProductName)
+		resp, traceID, err = s.tongyiClient.GenerateImage(ctx, prompt, "1024*1024", task.NumVariants, task.ProductName, "", task.ProductName)
 	}
 
 	if err != nil {
 		log.Printf("图像生成失败: %v", err)
-		database.DB.Model(&task).Updates(map[string]interface{}{
+		_ = s.taskRepo.UpdateFields(ctx, task.ID, map[string]interface{}{
 			"status":        models.TaskFailed,
 			"error_message": fmt.Sprintf("API调用失败: %v", err),
 			"progress":      100,
 		})
 		if traceID != "" {
-			s.tongyiClient.tracer.FinishTrace(traceID, "failed", "", err.Error())
+			s.tongyiClient.FinishTrace(traceID, "failed", "", err.Error())
 		}
 		return
 	}
@@ -149,14 +266,14 @@ func (s *CreativeService) processTask(taskID uint) {
 	log.Printf("成功创建通义任务, ID: %s", resp.Output.TaskID)
 
 	// 更新进度
-	database.DB.Model(&task).Update("progress", 60)
+	_ = s.taskRepo.UpdateProgress(ctx, task.ID, 60)
 
 	// 轮询任务状态
 	tongyiTaskID := resp.Output.TaskID
 	for i := 0; i < 60; i++ { // 增加等待时间到120秒 (60次*2秒)
 		time.Sleep(2 * time.Second)
 
-		queryResp, err := s.tongyiClient.QueryTask(context.Background(), traceID, tongyiTaskID, task.UUID)
+		queryResp, err := s.tongyiClient.QueryTask(ctx, traceID, tongyiTaskID, task.UUID)
 		if err != nil {
 			log.Printf("查询任务 %s 失败: %v", tongyiTaskID, err)
 			continue
@@ -182,7 +299,7 @@ func (s *CreativeService) processTask(taskID uint) {
 				// 如果配置了七牛云，则上传到七牛云
 				if s.qiniuService != nil {
 					fileName := fmt.Sprintf("%s_%d", task.UUID, idx)
-					qiniuURL, err := s.qiniuService.UploadFromURL(tongyiURL, fileName)
+					qiniuURL, err := s.qiniuService.UploadFromURL(context.Background(), tongyiURL, fileName)
 					if err != nil {
 						log.Printf("上传到七牛云失败: %v, 使用原始URL", err)
 						// 即使上传到七牛云失败，仍使用原始URL，但标记为本地存储
@@ -193,7 +310,7 @@ func (s *CreativeService) processTask(taskID uint) {
 						publicURL = qiniuURL
 						storageType = models.StorageQiniu
 						// 生成对应的内部存储路径
-						originalPath = s.qiniuService.generateKey(fmt.Sprintf("%s_%d", task.UUID, idx))
+						originalPath = s.qiniuService.GenerateKey(fmt.Sprintf("%s_%d", task.UUID, idx))
 						log.Printf("图片已上传到七牛云: %s (原始路径: %s)", qiniuURL, originalPath)
 					}
 				} else {
@@ -227,7 +344,7 @@ func (s *CreativeService) processTask(taskID uint) {
 				// 在创建前验证数据
 				log.Printf("创建资产 任务 %d: URL=%s, 格式=1:1, 存储类型=%s", task.ID, publicURL, storageType)
 
-				if err := database.DB.Create(&asset).Error; err != nil {
+				if err := s.assetRepo.Create(ctx, &asset); err != nil {
 					// 如果错误是因为缺少original_path字段，尝试手动构建SQL
 					log.Printf("保存资产失败: %v", err)
 					if strings.Contains(err.Error(), "original_path") {
@@ -249,7 +366,7 @@ func (s *CreativeService) processTask(taskID uint) {
 						}
 
 						// 现在使用更新后的模型结构保存
-						if err := database.DB.Create(&asset).Error; err != nil {
+						if err := s.assetRepo.Create(ctx, &asset); err != nil {
 							log.Printf("保存资产失败: %v", err)
 						} else {
 							log.Printf("成功保存资产 %s 任务 %d URL: %s", asset.UUID, taskID, asset.PublicURL)
@@ -269,12 +386,12 @@ func (s *CreativeService) processTask(taskID uint) {
 			}
 			// 设置首图
 			if firstPublicURL != "" {
-				database.DB.Model(&task).Update("first_asset_url", firstPublicURL)
+				_ = s.taskRepo.UpdateFields(ctx, task.ID, map[string]interface{}{"first_asset_url": firstPublicURL})
 			}
 
 			// 再次查询任务，确保在更新之前重新加载
-			var updatedTask models.CreativeTask
-			if err := database.DB.First(&updatedTask, taskID).Error; err != nil {
+			updatedTask, err := s.taskRepo.GetByID(ctx, taskID)
+			if err != nil {
 				log.Printf("重新加载任务 %d 失败: %v", taskID, err)
 				return
 			}
@@ -283,20 +400,20 @@ func (s *CreativeService) processTask(taskID uint) {
 			completedAt := time.Now()
 			duration := int(completedAt.Sub(now).Seconds())
 
-			result := database.DB.Model(&updatedTask).Updates(map[string]interface{}{
+			result := s.taskRepo.UpdateFields(ctx, updatedTask.ID, map[string]interface{}{
 				"status":              models.TaskCompleted,
 				"progress":            100,
 				"completed_at":        completedAt,
 				"processing_duration": duration,
 			})
 
-			if result.Error != nil {
-				log.Printf("更新完成任务失败: %v", result.Error)
+			if result != nil {
+				log.Printf("更新完成任务失败: %v", result)
 			} else {
 				log.Printf("任务 %d 成功完成，包含 %d 个资产", taskID, len(queryResp.Output.Results))
 			}
 			if traceID != "" {
-				s.tongyiClient.tracer.FinishTrace(traceID, "success", firstPublicURL, "")
+				s.tongyiClient.FinishTrace(traceID, "success", firstPublicURL, "")
 			}
 
 			return
@@ -307,60 +424,62 @@ func (s *CreativeService) processTask(taskID uint) {
 				errorMsg = "任务失败，无具体错误信息"
 			}
 
-			errUpdateResult := database.DB.Model(&task).Updates(map[string]interface{}{
+			errUpdateResult := s.taskRepo.UpdateFields(ctx, task.ID, map[string]interface{}{
 				"status":        models.TaskFailed,
 				"error_message": errorMsg,
 				"progress":      100,
 			})
 
-			if errUpdateResult.Error != nil {
-				log.Printf("更新失败任务失败: %v", errUpdateResult.Error)
+			if errUpdateResult != nil {
+				log.Printf("更新失败任务失败: %v", errUpdateResult)
 			} else {
 				log.Printf("任务 %d 失败: %s", taskID, errorMsg)
 			}
 			if traceID != "" {
-				s.tongyiClient.tracer.FinishTrace(traceID, "failed", "", errorMsg)
+				s.tongyiClient.FinishTrace(traceID, "failed", "", errorMsg)
 			}
 			return
 		}
 
 		// 更新进度
 		progress := 60 + (i * 40 / 60) // 改为60次计算，避免进度超过100
-		database.DB.Model(&task).Update("progress", progress)
+		_ = s.taskRepo.UpdateProgress(ctx, task.ID, progress)
 	}
 
 	// 超时
 	timeoutErr := "任务在120秒后超时"
-	errUpdateResult := database.DB.Model(&task).Updates(map[string]interface{}{
+	errUpdateResult := s.taskRepo.UpdateFields(ctx, task.ID, map[string]interface{}{
 		"status":        models.TaskFailed,
 		"error_message": timeoutErr,
 		"progress":      100,
 	})
 
-	if errUpdateResult.Error != nil {
-		log.Printf("更新超时任务失败: %v", errUpdateResult.Error)
+	if errUpdateResult != nil {
+		log.Printf("更新超时任务失败: %v", errUpdateResult)
 	} else {
 		log.Printf("任务 %d 超时: %s", taskID, timeoutErr)
 	}
 	if traceID != "" {
-		s.tongyiClient.tracer.FinishTrace(traceID, "failed", "", timeoutErr)
+		s.tongyiClient.FinishTrace(traceID, "failed", "", timeoutErr)
 	}
 }
 
 // processTaskPerVariant 针对每个变体使用单独提示词/风格生成
-func (s *CreativeService) processTaskPerVariant(task models.CreativeTask) {
+func (s *CreativeService) processTaskPerVariant(ctx context.Context, task *models.CreativeTask) {
 	now := time.Now()
-	database.DB.Model(&models.CreativeTask{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
+	_ = s.taskRepo.UpdateFields(ctx, task.ID, map[string]interface{}{
 		"status":     models.TaskProcessing,
 		"started_at": now,
 		"progress":   10,
 	})
 
 	// 重新获取最新任务
-	if err := database.DB.First(&task, task.ID).Error; err != nil {
+	updated, err := s.taskRepo.GetByID(ctx, task.ID)
+	if err != nil {
 		log.Printf("查找任务 %d 失败: %v", task.ID, err)
 		return
 	}
+	task = updated
 
 	numVariants := task.NumVariants
 	if numVariants <= 0 {
@@ -390,24 +509,24 @@ func (s *CreativeService) processTaskPerVariant(task models.CreativeTask) {
 			format = task.RequestedFormats[0]
 		}
 
-		var resp *ImageGenResponse
+		var resp *llm.ImageGenResponse
 		var err error
 		var traceID string
 
 		if task.ProductImageURL != "" {
-			resp, traceID, err = s.tongyiClient.GenerateImageWithProduct(context.Background(), prompt, task.ProductImageURL, size, 1, task.ProductName, "", task.ProductName)
+			resp, traceID, err = s.tongyiClient.GenerateImageWithProduct(ctx, prompt, task.ProductImageURL, size, 1, task.ProductName, "", task.ProductName)
 		} else {
-			resp, traceID, err = s.tongyiClient.GenerateImage(context.Background(), prompt, size, 1, task.ProductName, "", task.ProductName)
+			resp, traceID, err = s.tongyiClient.GenerateImage(ctx, prompt, size, 1, task.ProductName, "", task.ProductName)
 		}
 		if err != nil {
 			log.Printf("变体 %d 生成失败: %v", idx, err)
-			database.DB.Model(&task).Updates(map[string]interface{}{
+			_ = s.taskRepo.UpdateFields(context.Background(), task.ID, map[string]interface{}{
 				"status":        models.TaskFailed,
 				"error_message": fmt.Sprintf("变体 %d 生成失败: %v", idx+1, err),
 				"progress":      100,
 			})
 			if traceID != "" {
-				s.tongyiClient.tracer.FinishTrace(traceID, "failed", "", err.Error())
+				s.tongyiClient.FinishTrace(traceID, "failed", "", err.Error())
 			}
 			return
 		}
@@ -417,7 +536,7 @@ func (s *CreativeService) processTaskPerVariant(task models.CreativeTask) {
 
 		for i := 0; i < 60; i++ {
 			time.Sleep(2 * time.Second)
-			queryResp, err := s.tongyiClient.QueryTask(context.Background(), traceID, tongyiTaskID, task.UUID)
+			queryResp, err := s.tongyiClient.QueryTask(ctx, traceID, tongyiTaskID, task.UUID)
 			if err != nil {
 				log.Printf("查询变体任务 %s 失败: %v", tongyiTaskID, err)
 				continue
@@ -431,13 +550,13 @@ func (s *CreativeService) processTaskPerVariant(task models.CreativeTask) {
 
 				if s.qiniuService != nil {
 					fileName := fmt.Sprintf("%s_%d", task.UUID, idx)
-					qiniuURL, err := s.qiniuService.UploadFromURL(result.URL, fileName)
+					qiniuURL, err := s.qiniuService.UploadFromURL(context.Background(), result.URL, fileName)
 					if err != nil {
 						log.Printf("上传变体 %d 到七牛失败: %v，使用原始URL", idx, err)
 					} else {
 						publicURL = qiniuURL
 						storageType = models.StorageQiniu
-						originalPath = s.qiniuService.generateKey(fileName)
+						originalPath = s.qiniuService.GenerateKey(fileName)
 					}
 				}
 
@@ -462,7 +581,7 @@ func (s *CreativeService) processTaskPerVariant(task models.CreativeTask) {
 					ModelName:        "wanx-v1",
 				}
 
-				if err := database.DB.Create(&asset).Error; err != nil {
+				if err := s.assetRepo.Create(context.Background(), &asset); err != nil {
 					log.Printf("保存变体资产失败: %v", err)
 				} else {
 					if idx == 0 {
@@ -471,7 +590,7 @@ func (s *CreativeService) processTaskPerVariant(task models.CreativeTask) {
 				}
 				success = true
 				if traceID != "" {
-					s.tongyiClient.tracer.FinishTrace(traceID, "success", publicURL, "")
+					s.tongyiClient.FinishTrace(traceID, "success", publicURL, "")
 				}
 				break
 			} else if queryResp.Output.TaskStatus == "FAILED" {
@@ -479,13 +598,13 @@ func (s *CreativeService) processTaskPerVariant(task models.CreativeTask) {
 				if errMsg == "" {
 					errMsg = "任务失败"
 				}
-				database.DB.Model(&task).Updates(map[string]interface{}{
+				_ = s.taskRepo.UpdateFields(context.Background(), task.ID, map[string]interface{}{
 					"status":        models.TaskFailed,
 					"error_message": errMsg,
 					"progress":      100,
 				})
 				if traceID != "" {
-					s.tongyiClient.tracer.FinishTrace(traceID, "failed", "", errMsg)
+					s.tongyiClient.FinishTrace(traceID, "failed", "", errMsg)
 				}
 				return
 			}
@@ -493,7 +612,7 @@ func (s *CreativeService) processTaskPerVariant(task models.CreativeTask) {
 
 		progress := 30 + (idx+1)*40/numVariants
 		if success {
-			database.DB.Model(&task).Update("progress", progress)
+			_ = s.taskRepo.UpdateProgress(context.Background(), task.ID, progress)
 		}
 	}
 
@@ -509,214 +628,29 @@ func (s *CreativeService) processTaskPerVariant(task models.CreativeTask) {
 	if firstPublicURL != "" {
 		update["first_asset_url"] = firstPublicURL
 	}
-	if err := database.DB.Model(&task).Updates(update).Error; err != nil {
+	if err := s.taskRepo.UpdateFields(context.Background(), task.ID, update); err != nil {
 		log.Printf("更新变体任务完成状态失败: %v", err)
 	}
 }
 
-// generatePrompt 生成提示词
-func (s *CreativeService) generatePrompt(title string, sellingPoints models.StringArray, style string) string {
-	prompt := fmt.Sprintf("Product advertisement image for: %s", title)
+// DeleteTask 删除任务及其资产（软删除）
+func (s *CreativeService) DeleteTask(taskUUID string) error {
+	ctx := context.Background()
 
-	if len(sellingPoints) > 0 {
-		prompt += fmt.Sprintf(", features: %v", sellingPoints)
-	}
-
-	if style != "" {
-		styleMap := map[string]string{
-			"modern":       "modern and minimalist style",
-			"elegant":      "elegant and sophisticated style",
-			"vibrant":      "vibrant and energetic style",
-			"bright":       "bright and clean style",
-			"professional": "professional commercial style",
-		}
-		if desc, ok := styleMap[style]; ok {
-			prompt += ", " + desc
-		} else {
-			prompt += ", " + style
-		}
-	}
-
-	prompt += ", high quality, professional photography, clean background, product focused"
-
-	return prompt
-}
-
-func statusFromErr(err error) string {
+	task, err := s.taskRepo.GetByUUID(ctx, taskUUID)
 	if err != nil {
-		return "failed"
-	}
-	return "success"
-}
-
-func errMsg(err error) string {
-	if err == nil {
-		return ""
-	}
-	return err.Error()
-}
-
-func styleAt(arr models.StringArray, idx int) string {
-	if len(arr) == 0 {
-		return ""
-	}
-	if idx >= 0 && idx < len(arr) {
-		return arr[idx]
-	}
-	return arr[0]
-}
-
-// GetTask 获取任务详情
-func (s *CreativeService) GetTask(taskUUID string) (*models.CreativeTask, error) {
-	var task models.CreativeTask
-	if err := database.DB.Preload("Assets").Where("uuid = ?", taskUUID).First(&task).Error; err != nil {
-		return nil, err
-	}
-	return &task, nil
-}
-
-// StartCreativeGeneration 从已确认的文案启动创意生成
-type StartCreativeOptions struct {
-	ProductImageURL string
-	Style           string
-	NumVariants     int
-	Formats         []string
-	VariantPrompts  []string
-	VariantStyles   []string
-}
-
-// StartCreativeGeneration 从已确认的文案启动创意生成
-func (s *CreativeService) StartCreativeGeneration(taskUUID string, opts *StartCreativeOptions) error {
-	var task models.CreativeTask
-	if err := database.DB.Where("uuid = ?", taskUUID).First(&task).Error; err != nil {
 		return fmt.Errorf("task not found: %w", err)
 	}
 
-	if task.CTAText == "" || len(task.SellingPoints) == 0 {
-		return errors.New("task missing copywriting data")
+	if err := s.assetRepo.DeleteByTaskID(ctx, task.ID); err != nil {
+		return fmt.Errorf("delete assets failed: %w", err)
 	}
 
-	if task.Status == models.TaskProcessing || task.Status == models.TaskQueued {
-		return nil
+	if err := s.taskRepo.Delete(ctx, task); err != nil {
+		return fmt.Errorf("delete task failed: %w", err)
 	}
-
-	// 应用可选覆盖配置
-	if opts != nil {
-		updateMap := map[string]interface{}{}
-		if opts.ProductImageURL != "" {
-			updateMap["product_image_url"] = opts.ProductImageURL
-		}
-		if len(opts.Formats) > 0 {
-			updateMap["requested_formats"] = models.StringArray(opts.Formats)
-		}
-		if opts.Style != "" {
-			updateMap["requested_styles"] = models.StringArray{opts.Style}
-		}
-		if len(opts.VariantPrompts) > 0 {
-			updateMap["variant_prompts"] = models.StringArray(opts.VariantPrompts)
-		}
-		if len(opts.VariantStyles) > 0 {
-			updateMap["variant_styles"] = models.StringArray(opts.VariantStyles)
-		}
-		if opts.NumVariants > 0 {
-			updateMap["num_variants"] = opts.NumVariants
-		}
-		if len(updateMap) > 0 {
-			if err := database.DB.Model(&task).Updates(updateMap).Error; err != nil {
-				return fmt.Errorf("update task options failed: %w", err)
-			}
-			if err := database.DB.Where("uuid = ?", taskUUID).First(&task).Error; err != nil {
-				return fmt.Errorf("reload task failed: %w", err)
-			}
-		}
-	}
-
-	if err := database.DB.Model(&task).Updates(map[string]interface{}{
-		"status":   models.TaskQueued,
-		"progress": 5,
-	}).Error; err != nil {
-		return fmt.Errorf("update task status failed: %w", err)
-	}
-
-	go s.processTask(task.ID)
 
 	return nil
-}
-
-// ListAssetsQuery 查询参数
-type ListAssetsQuery struct {
-	Page     int    `json:"page"`
-	PageSize int    `json:"page_size"`
-	Format   string `json:"format"`
-	TaskID   string `json:"task_id"`
-}
-
-// ListAllAssets 获取所有创意素材
-func (s *CreativeService) ListAllAssets(query ListAssetsQuery) ([]CreativeAssetDTO, int64, error) {
-	var assets []models.CreativeAsset
-	var total int64
-
-	// 构建查询
-	dbQuery := database.DB.Model(&models.CreativeAsset{}).Preload("Task")
-
-	// 应用筛选条件
-	if query.Format != "" {
-		dbQuery = dbQuery.Where("format = ?", query.Format)
-	}
-	if query.TaskID != "" {
-		dbQuery = dbQuery.Joins("JOIN creative_tasks ON creative_assets.task_id = creative_tasks.id").
-			Where("creative_tasks.uuid = ?", query.TaskID)
-	}
-
-	// 获取总数
-	if err := dbQuery.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// 分页查询
-	offset := (query.Page - 1) * query.PageSize
-	if err := dbQuery.Offset(offset).Limit(query.PageSize).Order("creative_assets.created_at DESC").Find(&assets).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// 转换为响应格式
-	creativeDatas := make([]CreativeAssetDTO, 0, len(assets))
-	for _, asset := range assets {
-		creativeData := CreativeAssetDTO{
-			ID:            asset.UUID,
-			NumericID:     asset.ID,
-			Format:        asset.Format,
-			ImageURL:      getPublicURL(&asset), // 优先使用公共URL
-			Width:         asset.Width,
-			Height:        asset.Height,
-			Title:         asset.Task.Title,
-			ProductName:   asset.Task.ProductName,
-			CTAText:       asset.Task.CTAText,
-			SellingPoints: asset.Task.SellingPoints,
-		}
-		creativeDatas = append(creativeDatas, creativeData)
-	}
-
-	return creativeDatas, total, nil
-}
-
-// CreativeAssetDTO 素材数据传输对象
-type CreativeAssetDTO struct {
-	ID            string             `json:"id"`
-	NumericID     uint               `json:"numeric_id"`
-	Format        string             `json:"format"`
-	ImageURL      string             `json:"image_url"`
-	Width         int                `json:"width"`
-	Height        int                `json:"height"`
-	Title         string             `json:"title,omitempty"`
-	ProductName   string             `json:"product_name,omitempty"`
-	CTAText       string             `json:"cta_text,omitempty"`
-	SellingPoints models.StringArray `json:"selling_points,omitempty"`
-}
-
-// getPublicURL 获取公共访问URL
-func getPublicURL(asset *models.CreativeAsset) string {
-	return asset.PublicURL
 }
 
 // ListTasksQuery 任务查询参数
@@ -742,33 +676,83 @@ type TaskDTO struct {
 	FirstImage    string             `json:"first_image,omitempty"`
 }
 
-// ListAllTasks 获取所有任务
-func (s *CreativeService) ListAllTasks(query ListTasksQuery) ([]TaskDTO, int64, error) {
-	var tasks []models.CreativeTask
-	var total int64
+// ListAssetsQuery 素材查询参数
+type ListAssetsQuery struct {
+	Page     int    `json:"page"`
+	PageSize int    `json:"page_size"`
+	Format   string `json:"format"`
+	TaskID   string `json:"task_id"`
+}
 
-	// 构建查询
-	dbQuery := database.DB.Model(&models.CreativeTask{}).Preload("Assets")
+// CreativeAssetDTO 素材数据传输对象
+type CreativeAssetDTO struct {
+	ID               string             `json:"id"`
+	NumericID        uint               `json:"numeric_id"`
+	Format           string             `json:"format"`
+	ImageURL         string             `json:"image_url"`
+	Width            int                `json:"width"`
+	Height           int                `json:"height"`
+	Title            string             `json:"title,omitempty"`
+	ProductName      string             `json:"product_name,omitempty"`
+	CTAText          string             `json:"cta_text,omitempty"`
+	SellingPoints    models.StringArray `json:"selling_points,omitempty"`
+	Style            string             `json:"style,omitempty"`
+	GenerationPrompt string             `json:"generation_prompt,omitempty"`
+}
 
-	// 应用筛选条件
-	if query.Status != "" {
-		dbQuery = dbQuery.Where("status = ?", query.Status)
-	} else {
-		// 默认不展示草稿
-		dbQuery = dbQuery.Where("status <> ?", models.TaskDraft)
+// ListAllAssets 获取素材列表
+func (s *CreativeService) ListAllAssets(query ListAssetsQuery) ([]CreativeAssetDTO, int64, error) {
+	if query.Page <= 0 {
+		query.Page = 1
 	}
-	if query.UserID > 0 {
-		dbQuery = dbQuery.Where("user_id = ?", query.UserID)
+	if query.PageSize <= 0 || query.PageSize > 100 {
+		query.PageSize = 20
 	}
 
-	// 获取总数
-	if err := dbQuery.Count(&total).Error; err != nil {
+	domainQuery := shared.ListAssetsQuery{
+		Page:     query.Page,
+		PageSize: query.PageSize,
+		Format:   query.Format,
+		TaskID:   query.TaskID,
+	}
+
+	assets, total, err := s.assetRepo.List(context.Background(), domainQuery)
+	if err != nil {
 		return nil, 0, err
 	}
 
-	// 分页查询
-	offset := (query.Page - 1) * query.PageSize
-	if err := dbQuery.Offset(offset).Limit(query.PageSize).Order("created_at DESC").Find(&tasks).Error; err != nil {
+	result := make([]CreativeAssetDTO, 0, len(assets))
+	for _, asset := range assets {
+		result = append(result, CreativeAssetDTO{
+			ID:               asset.UUID,
+			NumericID:        asset.ID,
+			Format:           asset.Format,
+			ImageURL:         asset.PublicURL,
+			Width:            asset.Width,
+			Height:           asset.Height,
+			Title:            asset.Title,
+			ProductName:      asset.ProductName,
+			CTAText:          asset.CTAText,
+			SellingPoints:    asset.SellingPoints,
+			Style:            asset.Style,
+			GenerationPrompt: asset.GenerationPrompt,
+		})
+	}
+
+	return result, total, nil
+}
+
+// ListAllTasks 获取所有任务
+func (s *CreativeService) ListAllTasks(query ListTasksQuery) ([]TaskDTO, int64, error) {
+	domainQuery := shared.ListTasksQuery{
+		Page:     query.Page,
+		PageSize: query.PageSize,
+		Status:   query.Status,
+		UserID:   query.UserID,
+	}
+
+	tasks, total, err := s.taskRepo.List(context.Background(), domainQuery)
+	if err != nil {
 		return nil, 0, err
 	}
 
@@ -804,4 +788,37 @@ func (s *CreativeService) ListAllTasks(query ListTasksQuery) ([]TaskDTO, int64, 
 	}
 
 	return taskDTOs, total, nil
+}
+
+func (s *CreativeService) generatePrompt(title string, sellingPoints models.StringArray, style string) string {
+	prompt := fmt.Sprintf("Product advertisement image for: %s", title)
+
+	if len(sellingPoints) > 0 {
+		prompt += ". Key selling points: " + strings.Join(sellingPoints, "; ")
+	}
+
+	if style != "" {
+		prompt += ". Style: " + style
+	}
+
+	prompt += ". The image should be attractive, high quality, and suitable for digital advertising."
+
+	return prompt
+}
+
+func styleAt(arr models.StringArray, idx int) string {
+	if len(arr) == 0 {
+		return ""
+	}
+	if idx < 0 || idx >= len(arr) {
+		return arr[0]
+	}
+	return arr[idx]
+}
+
+func getPublicURL(asset *models.CreativeAsset) string {
+	if asset == nil {
+		return ""
+	}
+	return asset.PublicURL
 }

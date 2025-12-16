@@ -1,22 +1,30 @@
-package services
+package service
 
 import (
-	"ads-creative-gen-platform/internal/models"
-	"ads-creative-gen-platform/pkg/database"
 	"errors"
 	"fmt"
 	"math"
 	"strconv"
 	"time"
 
+	"ads-creative-gen-platform/internal/experiment/repository"
+	"ads-creative-gen-platform/internal/models"
+
 	"github.com/google/uuid"
 )
 
 // ExperimentService 实验服务
-type ExperimentService struct{}
+type ExperimentService struct {
+	repo repository.ExperimentRepository
+}
 
 func NewExperimentService() *ExperimentService {
-	return &ExperimentService{}
+	return &ExperimentService{repo: repository.NewExperimentRepository()}
+}
+
+// NewExperimentServiceWithRepo 支持依赖注入
+func NewExperimentServiceWithRepo(repo repository.ExperimentRepository) *ExperimentService {
+	return &ExperimentService{repo: repo}
 }
 
 // CreateExperimentInput 创建实验输入
@@ -42,6 +50,17 @@ type AssignedVariant struct {
 	Asset   *models.CreativeAsset
 }
 
+// Metrics DTO
+type ExperimentMetricsDTO struct {
+	ExperimentID string `json:"experiment_id"`
+	Variants     []struct {
+		CreativeID  uint    `json:"creative_id"`
+		Impressions int64   `json:"impressions"`
+		Clicks      int64   `json:"clicks"`
+		CTR         float64 `json:"ctr"`
+	} `json:"variants"`
+}
+
 // ListExperimentsResult 实验列表结果
 type ListExperimentsResult struct {
 	Experiments []models.Experiment
@@ -59,23 +78,9 @@ func (s *ExperimentService) ListExperiments(page int, pageSize int, status strin
 		pageSize = 20
 	}
 
-	query := database.DB.Model(&models.Experiment{})
-	if status != "" {
-		query = query.Where("status = ?", status)
-	}
-
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		return nil, fmt.Errorf("count experiments failed: %w", err)
-	}
-
-	var experiments []models.Experiment
-	if err := query.Preload("Variants").
-		Order("created_at desc").
-		Offset((page - 1) * pageSize).
-		Limit(pageSize).
-		Find(&experiments).Error; err != nil {
-		return nil, fmt.Errorf("list experiments failed: %w", err)
+	experiments, total, err := s.repo.ListExperiments(status, page, pageSize)
+	if err != nil {
+		return nil, err
 	}
 
 	return &ListExperimentsResult{
@@ -112,7 +117,7 @@ func (s *ExperimentService) CreateExperiment(input CreateExperimentInput) (*mode
 		Status:      models.ExpDraft,
 	}
 
-	if err := database.DB.Create(&exp).Error; err != nil {
+	if err := s.repo.CreateExperiment(&exp); err != nil {
 		return nil, fmt.Errorf("create experiment failed: %w", err)
 	}
 
@@ -123,20 +128,9 @@ func (s *ExperimentService) CreateExperiment(input CreateExperimentInput) (*mode
 		if v.CreativeID == "" {
 			return nil, errors.New("creative_id required")
 		}
-		var asset models.CreativeAsset
-		var creativeNumericID uint
-		// 尝试数字ID
-		if parsed, err := strconv.ParseUint(v.CreativeID, 10, 64); err == nil {
-			creativeNumericID = uint(parsed)
-			_ = database.DB.Where("id = ?", creativeNumericID).First(&asset).Error
-		} else {
-			// 尝试 UUID
-			if err := database.DB.Where("uuid = ?", v.CreativeID).First(&asset).Error; err == nil {
-				creativeNumericID = asset.ID
-			}
-		}
-		if creativeNumericID == 0 {
-			return nil, fmt.Errorf("creative_id %s not found", v.CreativeID)
+		asset, creativeNumericID, err := s.lookupAsset(v.CreativeID)
+		if err != nil {
+			return nil, err
 		}
 
 		width := int(math.Round((v.Weight / totalWeight) * 10000))
@@ -190,7 +184,7 @@ func (s *ExperimentService) CreateExperiment(input CreateExperimentInput) (*mode
 		variants[len(variants)-1].BucketEnd = 9999
 	}
 
-	if err := database.DB.Create(&variants).Error; err != nil {
+	if err := s.repo.CreateVariants(variants); err != nil {
 		return nil, fmt.Errorf("create variants failed: %w", err)
 	}
 
@@ -198,114 +192,91 @@ func (s *ExperimentService) CreateExperiment(input CreateExperimentInput) (*mode
 	return &exp, nil
 }
 
+func (s *ExperimentService) lookupAsset(creativeID string) (*models.CreativeAsset, uint, error) {
+	var asset *models.CreativeAsset
+	var numericID uint
+
+	if parsed, err := strconv.ParseUint(creativeID, 10, 64); err == nil {
+		numericID = uint(parsed)
+		a, _ := s.repo.FindAssetByID(numericID)
+		asset = a
+	} else {
+		a, err := s.repo.FindAssetByUUID(creativeID)
+		if err == nil && a != nil {
+			numericID = a.ID
+			asset = a
+		}
+	}
+
+	if numericID == 0 {
+		return nil, 0, fmt.Errorf("creative_id %s not found", creativeID)
+	}
+
+	return asset, numericID, nil
+}
+
 // UpdateStatus 更新实验状态
-func (s *ExperimentService) UpdateStatus(expUUID string, status models.ExperimentStatus) error {
+func (s *ExperimentService) UpdateStatus(id string, status models.ExperimentStatus) error {
 	if status != models.ExpActive && status != models.ExpPaused && status != models.ExpArchived && status != models.ExpDraft {
-		return errors.New("invalid status")
+		return fmt.Errorf("invalid status")
 	}
-	update := map[string]interface{}{
-		"status": status,
-	}
+	fields := map[string]interface{}{"status": status}
 	now := time.Now()
 	if status == models.ExpActive {
-		update["start_at"] = now
+		fields["start_at"] = now
 	}
 	if status == models.ExpArchived {
-		update["end_at"] = now
+		fields["end_at"] = now
 	}
-	return database.DB.Model(&models.Experiment{}).Where("uuid = ?", expUUID).Updates(update).Error
+	return s.repo.UpdateExperimentFields(id, fields)
 }
 
 // Assign 分流（返回变体与创意信息）
-func (s *ExperimentService) Assign(expUUID string, userKey string) (*AssignedVariant, error) {
-	var exp models.Experiment
-	if err := database.DB.Preload("Variants").Where("uuid = ?", expUUID).First(&exp).Error; err != nil {
+func (s *ExperimentService) Assign(id string, userKey string) (*AssignedVariant, error) {
+	exp, err := s.repo.GetExperimentWithVariants(id)
+	if err != nil {
 		return nil, fmt.Errorf("experiment not found: %w", err)
 	}
 	if exp.Status != models.ExpActive {
-		return nil, errors.New("experiment not active")
+		return nil, fmt.Errorf("experiment not active")
 	}
 
 	bucket := randBucket(userKey)
 	for _, v := range exp.Variants {
 		if bucket >= v.BucketStart && bucket <= v.BucketEnd {
-			var asset models.CreativeAsset
-			if err := database.DB.Preload("Task").Where("id = ?", v.CreativeID).First(&asset).Error; err != nil {
-				// 如果找不到资产，仍返回分流结果，只是不带素材信息
+			asset, err := s.repo.FindAssetWithTaskByID(v.CreativeID)
+			if err != nil {
 				return &AssignedVariant{Variant: v, Asset: nil}, nil
 			}
-			return &AssignedVariant{Variant: v, Asset: &asset}, nil
+			return &AssignedVariant{Variant: v, Asset: asset}, nil
 		}
 	}
-	return nil, errors.New("no variant matched")
+	return nil, fmt.Errorf("no variant matched")
 }
 
-// Hit 上报曝光
-func (s *ExperimentService) Hit(expUUID string, creativeID uint) error {
-	return s.incMetric(expUUID, creativeID, true)
+// Hit 记录曝光
+func (s *ExperimentService) Hit(id string, creativeID uint) error {
+	return s.incMetric(id, creativeID, true)
 }
 
-// Click 上报点击
-func (s *ExperimentService) Click(expUUID string, creativeID uint) error {
-	return s.incMetric(expUUID, creativeID, false)
+// Click 记录点击
+func (s *ExperimentService) Click(id string, creativeID uint) error {
+	return s.incMetric(id, creativeID, false)
 }
 
-func (s *ExperimentService) incMetric(expUUID string, creativeID uint, isImpression bool) error {
-	var exp models.Experiment
-	if err := database.DB.Where("uuid = ?", expUUID).First(&exp).Error; err != nil {
-		return fmt.Errorf("experiment not found: %w", err)
-	}
-
-	var metric models.ExperimentMetric
-	if err := database.DB.Where("experiment_id = ? AND creative_id = ?", exp.ID, creativeID).First(&metric).Error; err != nil {
-		metric = models.ExperimentMetric{
-			ExperimentID: exp.ID,
-			CreativeID:   creativeID,
-			Impressions:  0,
-			Clicks:       0,
-		}
-		if err := database.DB.Create(&metric).Error; err != nil {
-			return err
-		}
-	}
-
-	update := map[string]interface{}{
-		"updated_at": time.Now(),
-	}
-	if isImpression {
-		update["impressions"] = metric.Impressions + 1
-	} else {
-		update["clicks"] = metric.Clicks + 1
-	}
-	if err := database.DB.Model(&metric).Updates(update).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-// Metrics 查询实验指标
-type ExperimentMetricsDTO struct {
-	ExperimentID string `json:"experiment_id"`
-	Variants     []struct {
-		CreativeID  uint    `json:"creative_id"`
-		Impressions int64   `json:"impressions"`
-		Clicks      int64   `json:"clicks"`
-		CTR         float64 `json:"ctr"`
-	} `json:"variants"`
-}
-
-func (s *ExperimentService) GetMetrics(expUUID string) (*ExperimentMetricsDTO, error) {
-	var exp models.Experiment
-	if err := database.DB.Where("uuid = ?", expUUID).First(&exp).Error; err != nil {
+// GetMetrics 获取实验指标
+func (s *ExperimentService) GetMetrics(id string) (interface{}, error) {
+	exp, err := s.repo.GetExperimentByUUID(id)
+	if err != nil {
 		return nil, fmt.Errorf("experiment not found: %w", err)
 	}
 
-	var metrics []models.ExperimentMetric
-	if err := database.DB.Where("experiment_id = ?", exp.ID).Find(&metrics).Error; err != nil {
+	metrics, err := s.repo.ListMetrics(exp.ID)
+	if err != nil {
 		return nil, err
 	}
 
-	dto := ExperimentMetricsDTO{ExperimentID: expUUID}
+	dto := ExperimentMetricsDTO{ExperimentID: id}
 	for _, m := range metrics {
 		ctr := 0.0
 		if m.Impressions > 0 {
@@ -326,13 +297,28 @@ func (s *ExperimentService) GetMetrics(expUUID string) (*ExperimentMetricsDTO, e
 	return &dto, nil
 }
 
-// randBucket 将 userKey hash 到 [0,9999]
-func randBucket(userKey string) int {
-	if userKey == "" {
-		userKey = uuid.New().String()
+func (s *ExperimentService) incMetric(expUUID string, creativeID uint, isImpression bool) error {
+	exp, err := s.repo.GetExperimentByUUID(expUUID)
+	if err != nil {
+		return fmt.Errorf("experiment not found: %w", err)
 	}
-	h := uuid.NewSHA1(uuid.NameSpaceOID, []byte(userKey))
-	b := h[:]
-	val := int(b[0])<<8 + int(b[1])
-	return val % 10000
+
+	metric, err := s.repo.GetMetric(exp.ID, creativeID)
+	if err != nil || metric == nil {
+		metric = &models.ExperimentMetric{
+			ExperimentID: exp.ID,
+			CreativeID:   creativeID,
+			Impressions:  0,
+			Clicks:       0,
+		}
+	}
+
+	if isImpression {
+		metric.Impressions++
+	} else {
+		metric.Clicks++
+	}
+	metric.UpdatedAt = time.Now()
+
+	return s.repo.SaveMetric(metric)
 }

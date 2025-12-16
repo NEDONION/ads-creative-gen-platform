@@ -1,4 +1,4 @@
-package services
+package copywriting
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode"
 
+	"ads-creative-gen-platform/internal/infra/llm"
 	"ads-creative-gen-platform/internal/models"
 	"ads-creative-gen-platform/pkg/database"
 
@@ -15,13 +16,13 @@ import (
 
 // CopywritingService 负责文案生成与确认
 type CopywritingService struct {
-	qwenClient *QwenClient
+	qwenClient *llm.QwenClient
 }
 
 // NewCopywritingService 构造服务
 func NewCopywritingService() *CopywritingService {
 	return &CopywritingService{
-		qwenClient: NewQwenClient(),
+		qwenClient: llm.NewQwenClient(),
 	}
 }
 
@@ -198,7 +199,5 @@ func resolveLanguage(productName, language string) string {
 	if alphaCount > 0 {
 		return "en"
 	}
-
-	// 默认中文
 	return "zh"
 }

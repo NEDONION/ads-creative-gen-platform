@@ -1,7 +1,6 @@
-package handlers
+package tracing
 
 import (
-	"ads-creative-gen-platform/internal/tracing"
 	"net/http"
 	"strconv"
 
@@ -9,12 +8,12 @@ import (
 )
 
 type TraceHandler struct {
-	service *tracing.TraceService
+	service *TraceService
 }
 
 func NewTraceHandler() *TraceHandler {
 	return &TraceHandler{
-		service: tracing.NewTraceService(),
+		service: NewTraceService(),
 	}
 }
 
@@ -29,15 +28,21 @@ func (h *TraceHandler) ListTraces(c *gin.Context) {
 
 	result, err := h.service.List(page, pageSize, status, modelName, traceID, productName)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Failed to list traces: "+err.Error()))
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "Failed to list traces: " + err.Error(),
+		})
 		return
 	}
-	c.JSON(http.StatusOK, SuccessResponse(map[string]interface{}{
-		"traces":    result.Traces,
-		"total":     result.Total,
-		"page":      result.Page,
-		"page_size": result.PageSize,
-	}))
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"data": map[string]interface{}{
+			"traces":    result.Traces,
+			"total":     result.Total,
+			"page":      result.Page,
+			"page_size": result.PageSize,
+		},
+	})
 }
 
 // Trace detail
@@ -45,8 +50,14 @@ func (h *TraceHandler) GetTrace(c *gin.Context) {
 	traceID := c.Param("id")
 	trace, err := h.service.Detail(traceID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse(404, "trace not found: "+err.Error()))
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "trace not found: " + err.Error(),
+		})
 		return
 	}
-	c.JSON(http.StatusOK, SuccessResponse(trace))
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"data": trace,
+	})
 }

@@ -1,60 +1,75 @@
-package handlers
+package handler
 
 import (
-	"ads-creative-gen-platform/internal/models"
-	"ads-creative-gen-platform/internal/services"
 	"math"
 	"net/http"
 	"strconv"
+
+	"ads-creative-gen-platform/internal/copywriting"
+	ctask "ads-creative-gen-platform/internal/creative"
+	creative "ads-creative-gen-platform/internal/creative/service"
+	"ads-creative-gen-platform/internal/models"
+	"ads-creative-gen-platform/internal/shared"
+	"ads-creative-gen-platform/internal/task"
 
 	"github.com/gin-gonic/gin"
 )
 
 // CreativeHandler 创意处理器
 type CreativeHandler struct {
-	service            *services.CreativeService
-	copywritingService *services.CopywritingService
+	service            *creative.CreativeService
+	copywritingService *copywriting.CopywritingService
+	runner             *task.Runner
 }
 
 // NewCreativeHandler 创建处理器
 func NewCreativeHandler() *CreativeHandler {
+	runner := task.NewRunner(10, 100)
+	runner.Start()
+
+	svc := creative.NewCreativeService()
+	svc.SetEnqueuer(func(taskID uint) error {
+		return runner.Enqueue(ctask.NewCreativeGenerateTask(svc, taskID))
+	})
+
 	return &CreativeHandler{
-		service:            services.NewCreativeService(),
-		copywritingService: services.NewCopywritingService(),
+		service:            svc,
+		copywritingService: copywriting.NewCopywritingService(),
+		runner:             runner,
 	}
 }
 
 // GenerateCopywriting 生成文案候选
 func (h *CreativeHandler) GenerateCopywriting(c *gin.Context) {
-	var req GenerateCopywritingRequest
+	var req shared.GenerateCopywritingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Invalid request: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Invalid request: "+err.Error()))
 		return
 	}
 
-	output, err := h.copywritingService.GenerateCopywriting(services.GenerateCopywritingInput{
+	output, err := h.copywritingService.GenerateCopywriting(copywriting.GenerateCopywritingInput{
 		UserID:      1, // TODO: 认证集成后替换
 		ProductName: req.ProductName,
 		Language:    req.Language,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse(500, "Failed to generate copywriting: "+err.Error()))
+		c.JSON(http.StatusInternalServerError, shared.ErrorResponse(500, "Failed to generate copywriting: "+err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, SuccessResponse(output))
+	c.JSON(http.StatusOK, shared.SuccessResponse(output))
 }
 
 // Generate 创建创意生成任务
 func (h *CreativeHandler) Generate(c *gin.Context) {
-	var req GenerateRequest
+	var req shared.GenerateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Invalid request: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Invalid request: "+err.Error()))
 		return
 	}
 
 	// 创建任务
-	task, err := h.service.CreateTask(services.CreateTaskInput{
+	task, err := h.service.CreateTask(creative.CreateTaskInput{
 		UserID:          1, // TODO: 从认证中获取
 		Title:           req.Title,
 		SellingPoints:   req.SellingPoints,
@@ -66,12 +81,12 @@ func (h *CreativeHandler) Generate(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse(500, "Failed to create task: "+err.Error()))
+		c.JSON(http.StatusInternalServerError, shared.ErrorResponse(500, "Failed to create task: "+err.Error()))
 		return
 	}
 
 	// 返回任务信息
-	c.JSON(http.StatusOK, SuccessResponse(TaskData{
+	c.JSON(http.StatusOK, shared.SuccessResponse(shared.TaskData{
 		TaskID: task.UUID,
 		Status: string(task.Status),
 	}))
@@ -79,13 +94,13 @@ func (h *CreativeHandler) Generate(c *gin.Context) {
 
 // ConfirmCopywriting 确认文案选择
 func (h *CreativeHandler) ConfirmCopywriting(c *gin.Context) {
-	var req ConfirmCopywritingRequest
+	var req shared.ConfirmCopywritingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Invalid request: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Invalid request: "+err.Error()))
 		return
 	}
 
-	task, err := h.copywritingService.ConfirmCopywriting(services.ConfirmCopywritingInput{
+	task, err := h.copywritingService.ConfirmCopywriting(copywriting.ConfirmCopywritingInput{
 		TaskID:            req.TaskID,
 		SelectedCTAIndex:  req.SelectedCTAIndex,
 		SelectedSPIndexes: req.SelectedSPIndexes,
@@ -97,11 +112,11 @@ func (h *CreativeHandler) ConfirmCopywriting(c *gin.Context) {
 		Formats:           req.Formats,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Failed to confirm copywriting: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Failed to confirm copywriting: "+err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, SuccessResponse(TaskData{
+	c.JSON(http.StatusOK, shared.SuccessResponse(shared.TaskData{
 		TaskID: task.UUID,
 		Status: string(task.Status),
 	}))
@@ -109,13 +124,13 @@ func (h *CreativeHandler) ConfirmCopywriting(c *gin.Context) {
 
 // StartCreative 从确认后的任务启动生成
 func (h *CreativeHandler) StartCreative(c *gin.Context) {
-	var req StartCreativeRequest
+	var req shared.StartCreativeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Invalid request: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Invalid request: "+err.Error()))
 		return
 	}
 
-	opts := &services.StartCreativeOptions{
+	opts := &creative.StartCreativeOptions{
 		ProductImageURL: req.ProductImageURL,
 		Style:           req.Style,
 		NumVariants:     req.NumVariants,
@@ -127,11 +142,11 @@ func (h *CreativeHandler) StartCreative(c *gin.Context) {
 	}
 
 	if err := h.service.StartCreativeGeneration(req.TaskID, opts); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Failed to start creative generation: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Failed to start creative generation: "+err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, SuccessResponse(TaskData{
+	c.JSON(http.StatusOK, shared.SuccessResponse(shared.TaskData{
 		TaskID: req.TaskID,
 		Status: string(models.TaskQueued),
 	}))
@@ -141,15 +156,15 @@ func (h *CreativeHandler) StartCreative(c *gin.Context) {
 func (h *CreativeHandler) DeleteTask(c *gin.Context) {
 	taskID := c.Param("id")
 	if taskID == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "task_id is required"))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "task_id is required"))
 		return
 	}
 
 	if err := h.service.DeleteTask(taskID); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Failed to delete task: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Failed to delete task: "+err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, SuccessResponse(TaskData{
+	c.JSON(http.StatusOK, shared.SuccessResponse(shared.TaskData{
 		TaskID: taskID,
 		Status: "deleted",
 	}))
@@ -162,12 +177,12 @@ func (h *CreativeHandler) GetTask(c *gin.Context) {
 	task, err := h.service.GetTask(taskID)
 	if err != nil {
 		// 修复：确保返回标准的JSON错误响应
-		c.JSON(http.StatusNotFound, ErrorResponse(404, "Task not found"))
+		c.JSON(http.StatusNotFound, shared.ErrorResponse(404, "Task not found"))
 		return
 	}
 
 	// 构建响应
-	data := TaskDetailData{
+	data := shared.TaskDetailData{
 		TaskID:           task.UUID,
 		Status:           string(task.Status),
 		Title:            task.Title,
@@ -193,9 +208,9 @@ func (h *CreativeHandler) GetTask(c *gin.Context) {
 	}
 
 	// 总是包含资产信息（即使为空）
-	creatives := make([]CreativeData, 0, len(task.Assets))
+	creatives := make([]shared.CreativeData, 0, len(task.Assets))
 	for _, asset := range task.Assets {
-		creatives = append(creatives, CreativeData{
+		creatives = append(creatives, shared.CreativeData{
 			ID:               asset.UUID,
 			Format:           asset.Format,
 			ImageURL:         getPublicURL(&asset), // 使用统一的方法获取公共URL
@@ -211,7 +226,7 @@ func (h *CreativeHandler) GetTask(c *gin.Context) {
 	}
 	data.Creatives = creatives
 
-	c.JSON(http.StatusOK, SuccessResponse(data))
+	c.JSON(http.StatusOK, shared.SuccessResponse(data))
 }
 
 // getPublicURL 获取公共访问URL
@@ -246,7 +261,7 @@ func (h *CreativeHandler) ListAllAssets(c *gin.Context) {
 	}
 
 	// 构建查询条件
-	query := services.ListAssetsQuery{
+	query := creative.ListAssetsQuery{
 		Page:     pageNum,
 		PageSize: pageSizeNum,
 		Format:   format,
@@ -256,7 +271,7 @@ func (h *CreativeHandler) ListAllAssets(c *gin.Context) {
 	// 获取素材列表
 	assets, total, err := h.service.ListAllAssets(query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse(500, "Failed to fetch assets: "+err.Error()))
+		c.JSON(http.StatusInternalServerError, shared.ErrorResponse(500, "Failed to fetch assets: "+err.Error()))
 		return
 	}
 
@@ -269,7 +284,7 @@ func (h *CreativeHandler) ListAllAssets(c *gin.Context) {
 		"total_pages": int(math.Ceil(float64(total) / float64(pageSizeNum))),
 	}
 
-	c.JSON(http.StatusOK, SuccessResponse(responseData))
+	c.JSON(http.StatusOK, shared.SuccessResponse(responseData))
 }
 
 // ListAllTasks 获取所有任务
@@ -291,7 +306,7 @@ func (h *CreativeHandler) ListAllTasks(c *gin.Context) {
 	}
 
 	// 构建查询条件
-	query := services.ListTasksQuery{
+	query := creative.ListTasksQuery{
 		Page:     pageNum,
 		PageSize: pageSizeNum,
 		Status:   status,
@@ -301,7 +316,7 @@ func (h *CreativeHandler) ListAllTasks(c *gin.Context) {
 	// 获取任务列表
 	tasks, total, err := h.service.ListAllTasks(query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse(500, "Failed to fetch tasks: "+err.Error()))
+		c.JSON(http.StatusInternalServerError, shared.ErrorResponse(500, "Failed to fetch tasks: "+err.Error()))
 		return
 	}
 
@@ -314,5 +329,5 @@ func (h *CreativeHandler) ListAllTasks(c *gin.Context) {
 		"total_pages": int(math.Ceil(float64(total) / float64(pageSizeNum))),
 	}
 
-	c.JSON(http.StatusOK, SuccessResponse(responseData))
+	c.JSON(http.StatusOK, shared.SuccessResponse(responseData))
 }

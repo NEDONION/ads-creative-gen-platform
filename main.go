@@ -1,13 +1,16 @@
 package main
 
 import (
-	"ads-creative-gen-platform/config"
-	"ads-creative-gen-platform/internal/handlers"
-	"ads-creative-gen-platform/internal/middleware"
-	"ads-creative-gen-platform/pkg/database"
 	"fmt"
 	"os"
 	"strings"
+
+	"ads-creative-gen-platform/config"
+	creativehandler "ads-creative-gen-platform/internal/creative/handler"
+	experimenthandler "ads-creative-gen-platform/internal/experiment/handler"
+	"ads-creative-gen-platform/internal/middleware"
+	"ads-creative-gen-platform/internal/tracing"
+	"ads-creative-gen-platform/pkg/database"
 
 	"github.com/gin-gonic/gin"
 )
@@ -37,9 +40,9 @@ func main() {
 	r.Use(middleware.CORSMiddleware())
 
 	// 创建处理器
-	creativeHandler := handlers.NewCreativeHandler()
-	experimentHandler := handlers.NewExperimentHandler()
-	traceHandler := handlers.NewTraceHandler()
+	creativeHandler := creativehandler.NewCreativeHandler()
+	experimentHandler := experimenthandler.NewExperimentHandler()
+	traceHandler := tracing.NewTraceHandler()
 
 	// 健康检查
 	r.GET("/health", func(c *gin.Context) {

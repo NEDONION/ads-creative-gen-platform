@@ -154,7 +154,7 @@ ads-creative-gen-platform/
 
 示例:
 ```go
-// internal/handlers/example_handler.go
+// internal/shared/example_handler.go
 func (h *ExampleHandler) GetExample(c *gin.Context) {
     c.JSON(200, gin.H{"message": "example"})
 }

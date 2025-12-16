@@ -1,42 +1,44 @@
-package handlers
+package handler
 
 import (
-	"ads-creative-gen-platform/internal/services"
 	"net/http"
 	"strconv"
 	"time"
+
+	"ads-creative-gen-platform/internal/experiment/service"
+	"ads-creative-gen-platform/internal/shared"
 
 	"github.com/gin-gonic/gin"
 )
 
 type ExperimentHandler struct {
-	service *services.ExperimentService
+	service *service.ExperimentService
 }
 
 func NewExperimentHandler() *ExperimentHandler {
 	return &ExperimentHandler{
-		service: services.NewExperimentService(),
+		service: service.NewExperimentService(),
 	}
 }
 
 // CreateExperiment 创建实验
 func (h *ExperimentHandler) CreateExperiment(c *gin.Context) {
-	var req CreateExperimentRequest
+	var req shared.CreateExperimentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Invalid request: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Invalid request: "+err.Error()))
 		return
 	}
 
-	exp, err := h.service.CreateExperiment(services.CreateExperimentInput{
+	exp, err := h.service.CreateExperiment(service.CreateExperimentInput{
 		Name:        req.Name,
 		ProductName: req.ProductName,
 		Variants:    req.Variants,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Failed to create experiment: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Failed to create experiment: "+err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, SuccessResponse(map[string]interface{}{
+	c.JSON(http.StatusOK, shared.SuccessResponse(map[string]interface{}{
 		"experiment_id": exp.UUID,
 		"status":        exp.Status,
 	}))
@@ -50,7 +52,7 @@ func (h *ExperimentHandler) ListExperiments(c *gin.Context) {
 
 	result, err := h.service.ListExperiments(page, pageSize, status)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Failed to list experiments: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Failed to list experiments: "+err.Error()))
 		return
 	}
 
@@ -123,22 +125,22 @@ func (h *ExperimentHandler) ListExperiments(c *gin.Context) {
 		resp.Experiments = append(resp.Experiments, item)
 	}
 
-	c.JSON(http.StatusOK, SuccessResponse(resp))
+	c.JSON(http.StatusOK, shared.SuccessResponse(resp))
 }
 
 // UpdateStatus 更新状态
 func (h *ExperimentHandler) UpdateStatus(c *gin.Context) {
 	id := c.Param("id")
-	var req UpdateExperimentStatusRequest
+	var req shared.UpdateExperimentStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Invalid request: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Invalid request: "+err.Error()))
 		return
 	}
 	if err := h.service.UpdateStatus(id, req.Status); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Failed to update status: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Failed to update status: "+err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, SuccessResponse(map[string]interface{}{
+	c.JSON(http.StatusOK, shared.SuccessResponse(map[string]interface{}{
 		"experiment_id": id,
 		"status":        req.Status,
 	}))
@@ -150,7 +152,7 @@ func (h *ExperimentHandler) Assign(c *gin.Context) {
 	userKey := c.Query("user_key")
 	result, err := h.service.Assign(id, userKey)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Assign failed: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Assign failed: "+err.Error()))
 		return
 	}
 	// 优先使用 variant 存储的元数据快照（用户选择的覆盖值）
@@ -199,37 +201,37 @@ func (h *ExperimentHandler) Assign(c *gin.Context) {
 		resp["asset_uuid"] = result.Asset.UUID
 		resp["task_id"] = result.Asset.TaskID
 	}
-	c.JSON(http.StatusOK, SuccessResponse(resp))
+	c.JSON(http.StatusOK, shared.SuccessResponse(resp))
 }
 
 // Hit 曝光
 func (h *ExperimentHandler) Hit(c *gin.Context) {
 	id := c.Param("id")
-	var req TrackRequest
+	var req shared.TrackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Invalid request: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Invalid request: "+err.Error()))
 		return
 	}
 	if err := h.service.Hit(id, req.CreativeID); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Hit failed: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Hit failed: "+err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, SuccessResponse(map[string]string{"status": "ok"}))
+	c.JSON(http.StatusOK, shared.SuccessResponse(map[string]string{"status": "ok"}))
 }
 
 // Click 点击
 func (h *ExperimentHandler) Click(c *gin.Context) {
 	id := c.Param("id")
-	var req TrackRequest
+	var req shared.TrackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Invalid request: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Invalid request: "+err.Error()))
 		return
 	}
 	if err := h.service.Click(id, req.CreativeID); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Click failed: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Click failed: "+err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, SuccessResponse(map[string]string{"status": "ok"}))
+	c.JSON(http.StatusOK, shared.SuccessResponse(map[string]string{"status": "ok"}))
 }
 
 // Metrics 结果
@@ -237,8 +239,8 @@ func (h *ExperimentHandler) Metrics(c *gin.Context) {
 	id := c.Param("id")
 	dto, err := h.service.GetMetrics(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(400, "Metrics failed: "+err.Error()))
+		c.JSON(http.StatusBadRequest, shared.ErrorResponse(400, "Metrics failed: "+err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, SuccessResponse(dto))
+	c.JSON(http.StatusOK, shared.SuccessResponse(dto))
 }
