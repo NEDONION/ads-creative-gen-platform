@@ -146,6 +146,7 @@ const DashboardPage: React.FC = () => {
   };
 
   const getTaskStatusText = (status?: string) => {
+    const key = (status || '').toLowerCase();
     const map: Record<string, string> = {
       pending: t('taskStatusPending'),
       queued: t('taskStatusQueued'),
@@ -154,17 +155,18 @@ const DashboardPage: React.FC = () => {
       failed: t('taskStatusFailed'),
       cancelled: t('taskStatusCancelled'),
     };
-    return map[status || ''] || status || '';
+    return map[key] || status || '';
   };
 
   const getExperimentStatusText = (status?: string) => {
+    const key = (status || '').toLowerCase();
     const map: Record<string, string> = {
       active: t('experimentStatusActive'),
       archived: t('experimentStatusArchived'),
       draft: t('experimentStatusDraft'),
       completed: t('experimentStatusCompleted'),
     };
-    return map[status || ''] || t('experimentStatusUpdated');
+    return map[key] || t('experimentStatusUpdated');
   };
 
   useEffect(() => {
