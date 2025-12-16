@@ -63,38 +63,14 @@ const InfoCard: React.FC<InfoCardProps> = ({ title, icon, children, action }) =>
 };
 
 // 活动项组件
-interface ActivityItemProps {
-  type: 'task' | 'asset' | 'user' | 'experiment';
-  message: React.ReactNode;
-  time: string;
-}
-
-const ActivityItem: React.FC<ActivityItemProps> = ({ type, message, time }) => {
-  const iconMap: Record<ActivityItemProps['type'], string> = {
-    task: '✓',
-    asset: '🎨',
-    user: '👤',
-    experiment: '🧪',
-  };
-
-  return (
-    <div className="activity-item">
-      <div className="activity-icon">{iconMap[type]}</div>
-      <div className="activity-content">
-        <span className="activity-message">{message}</span>
-        <span className="activity-time">{time}</span>
-      </div>
-    </div>
-  );
-};
-
 type ActivityType = 'task' | 'asset' | 'experiment';
 
 interface ActivityEntry {
   id: string;
   type: ActivityType;
-  message: React.ReactNode;
-  time: string;
+  name: string;
+  status?: string;
+  date?: string;
   timestamp: number;
 }
 
@@ -214,14 +190,9 @@ const DashboardPage: React.FC = () => {
         return {
           id: task.id,
           type: 'task',
-          message: (
-            <>
-              {t('taskWord')}{' '}
-              <span className="activity-chip">{shortId(task.id)}</span>{' '}
-              <span className="activity-chip activity-chip-muted">{getTaskStatusText(task.status)}</span>
-            </>
-          ),
-          time: formatRelativeTime(task.completed_at || task.created_at),
+          name: shortId(task.id),
+          status: task.status,
+          date: task.completed_at || task.created_at,
           timestamp,
         };
       });
@@ -232,12 +203,8 @@ const DashboardPage: React.FC = () => {
         return {
           id: asset.id,
           type: 'asset',
-          message: (
-            <>
-              <span className="activity-chip">{label}</span> {t('assetGenerated')}
-            </>
-          ),
-          time: formatRelativeTime(asset.created_at || asset.updated_at),
+          name: label,
+          date: asset.created_at || asset.updated_at,
           timestamp,
         };
       });
@@ -248,14 +215,9 @@ const DashboardPage: React.FC = () => {
         return {
           id: exp.experiment_id,
           type: 'experiment',
-          message: (
-            <>
-              {t('experimentWord')}{' '}
-              <span className="activity-chip">{displayName}</span>{' '}
-              <span className="activity-chip activity-chip-muted">{getExperimentStatusText(exp.status)}</span>
-            </>
-          ),
-          time: formatRelativeTime(exp.start_at || exp.created_at),
+          name: displayName,
+          status: exp.status,
+          date: exp.start_at || exp.created_at,
           timestamp,
         };
       });
@@ -371,14 +333,49 @@ const DashboardPage: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    {activities.map((activity) => (
-                      <ActivityItem
-                        key={`${activity.type}-${activity.id}-${activity.timestamp}`}
-                        type={activity.type}
-                        message={activity.message}
-                        time={activity.time}
-                      />
-                    ))}
+                    {activities.map((activity) => {
+                      const iconMap: Record<ActivityType, string> = {
+                        task: '✓',
+                        asset: '🎨',
+                        experiment: '🧪',
+                      };
+
+                      const renderMessage = () => {
+                        if (activity.type === 'task') {
+                          return (
+                            <>
+                              {t('taskWord')}{' '}
+                              <span className="activity-chip">{activity.name}</span>{' '}
+                              <span className="activity-chip activity-chip-muted">{getTaskStatusText(activity.status)}</span>
+                            </>
+                          );
+                        }
+                        if (activity.type === 'asset') {
+                          return (
+                            <>
+                              <span className="activity-chip">{activity.name}</span> {t('assetGenerated')}
+                            </>
+                          );
+                        }
+                        return (
+                          <>
+                            {t('experimentWord')}{' '}
+                            <span className="activity-chip">{activity.name}</span>{' '}
+                            <span className="activity-chip activity-chip-muted">{getExperimentStatusText(activity.status)}</span>
+                          </>
+                        );
+                      };
+
+                      return (
+                        <div className="activity-item" key={`${activity.type}-${activity.id}-${activity.timestamp}`}>
+                          <div className="activity-icon">{iconMap[activity.type]}</div>
+                          <div className="activity-content">
+                            <span className="activity-message">{renderMessage()}</span>
+                            <span className="activity-time">{formatRelativeTime(activity.date)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                     <div style={{ fontSize: 12, color: '#8c8c8c', padding: '6px 2px' }}>{t('activityMore')}</div>
                   </>
                 )}
