@@ -130,6 +130,10 @@ const TracePage: React.FC = () => {
                   <button className="compact-btn compact-btn-primary compact-btn-sm" onClick={loadTraces} disabled={loading}>
                     {t('query')}
                   </button>
+                  <button className="compact-btn compact-btn-outline compact-btn-sm" onClick={loadTraces} disabled={loading}>
+                    <i className="fas fa-sync"></i>
+                    <span style={{ marginLeft: 4 }}>{t('refresh')}</span>
+                  </button>
                 </div>
               </div>
               <div className="compact-card-body">

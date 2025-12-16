@@ -65,7 +65,7 @@ const InfoCard: React.FC<InfoCardProps> = ({ title, icon, children, action }) =>
 // 活动项组件
 interface ActivityItemProps {
   type: 'task' | 'asset' | 'user' | 'experiment';
-  message: string;
+  message: React.ReactNode;
   time: string;
 }
 
@@ -93,7 +93,7 @@ type ActivityType = 'task' | 'asset' | 'experiment';
 interface ActivityEntry {
   id: string;
   type: ActivityType;
-  message: string;
+  message: React.ReactNode;
   time: string;
   timestamp: number;
 }
@@ -212,9 +212,13 @@ const DashboardPage: React.FC = () => {
         return {
           id: task.id,
           type: 'task',
-          message: t('activityTaskMessage')
-            .replace('{id}', shortId(task.id))
-            .replace('{status}', getTaskStatusText(task.status)),
+          message: (
+            <>
+              {t('taskWord')}{' '}
+              <span className="activity-chip">{shortId(task.id)}</span>{' '}
+              <span className="activity-chip activity-chip-muted">{getTaskStatusText(task.status)}</span>
+            </>
+          ),
           time: formatRelativeTime(task.completed_at || task.created_at),
           timestamp,
         };
@@ -226,7 +230,11 @@ const DashboardPage: React.FC = () => {
         return {
           id: asset.id,
           type: 'asset',
-          message: t('activityAssetMessage').replace('{name}', label),
+          message: (
+            <>
+              <span className="activity-chip">{label}</span> {t('assetGenerated')}
+            </>
+          ),
           time: formatRelativeTime(asset.created_at || asset.updated_at),
           timestamp,
         };
@@ -238,9 +246,13 @@ const DashboardPage: React.FC = () => {
         return {
           id: exp.experiment_id,
           type: 'experiment',
-          message: t('activityExperimentMessage')
-            .replace('{name}', displayName)
-            .replace('{status}', getExperimentStatusText(exp.status)),
+          message: (
+            <>
+              {t('experimentWord')}{' '}
+              <span className="activity-chip">{displayName}</span>{' '}
+              <span className="activity-chip activity-chip-muted">{getExperimentStatusText(exp.status)}</span>
+            </>
+          ),
           time: formatRelativeTime(exp.start_at || exp.created_at),
           timestamp,
         };

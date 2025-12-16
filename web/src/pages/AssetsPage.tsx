@@ -199,9 +199,6 @@ const AssetsPage: React.FC = () => {
                                   <span className="compact-asset-size">{asset.width}×{asset.height}</span>
                                   <code className="compact-asset-id">{asset.id.substring(0, 8)}...</code>
                                 </div>
-                                <div className="meta-right">
-                                  {asset.style && <span className="summary-chip">{t('styleTag').replace('{style}', asset.style)}</span>}
-                                </div>
                               </div>
                               <div className="vertical-body">
                                 <div className="compact-asset-image-wrapper tall-vertical">
@@ -233,6 +230,14 @@ const AssetsPage: React.FC = () => {
                                     <div className="info-row">
                                       <span className="label">{t('sellingPointsLabel')}</span>
                                       <span className="value">{asset.selling_points.join(lang === 'zh' ? '、' : ' / ')}</span>
+                                    </div>
+                                  )}
+                                  {asset.style && (
+                                    <div className="info-row">
+                                      <span className="label">{t('style')}</span>
+                                      <span className="value">
+                                        <span className="style-chip">{asset.style}</span>
+                                      </span>
                                     </div>
                                   )}
                                 </div>

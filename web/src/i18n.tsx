@@ -298,6 +298,9 @@ const messages: Messages = {
   timeMinutesAgo: { zh: '{n} 分钟前', en: '{n} minutes ago' },
   timeHoursAgo: { zh: '{n} 小时前', en: '{n} hours ago' },
   timeDaysAgo: { zh: '{n} 天前', en: '{n} days ago' },
+  taskWord: { zh: '任务', en: 'Task' },
+  experimentWord: { zh: '实验', en: 'Experiment' },
+  assetWord: { zh: '素材', en: 'Asset' },
 };
 
 interface I18nValue {
