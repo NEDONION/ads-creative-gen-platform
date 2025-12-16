@@ -7,8 +7,8 @@ type CreateExperimentRequest struct {
 }
 
 type ExperimentVariantPayload struct {
-	CreativeID uint    `json:"creative_id"`
-	Weight     float64 `json:"weight"`
+	CreativeID string  `json:"creative_id" binding:"required"`
+	Weight     float64 `json:"weight" binding:"required"`
 }
 
 type GenerateResponse struct {

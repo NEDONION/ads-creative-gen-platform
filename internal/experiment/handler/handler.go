@@ -32,8 +32,11 @@ func (h *ExperimentHandler) CreateExperiment(c *gin.Context) {
 
 	var variants []service.ExperimentVariantInput
 	for _, v := range req.Variants {
+		if v.CreativeID == "" {
+			continue
+		}
 		variants = append(variants, service.ExperimentVariantInput{
-			CreativeID: strconv.FormatUint(uint64(v.CreativeID), 10),
+			CreativeID: v.CreativeID,
 			Weight:     v.Weight,
 		})
 	}

@@ -86,7 +86,7 @@ const ExperimentCreatePage: React.FC = () => {
     setVariants((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const getCreativeLabel = (id: number | string) => {
+  const getCreativeLabel = (id: string) => {
     const opt = creativeOptions.find((o) => o.id === String(id));
     if (opt) return opt.label;
     return id;

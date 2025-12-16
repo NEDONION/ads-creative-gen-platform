@@ -9,6 +9,22 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178c6.svg)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-336791.svg)](https://www.postgresql.org/)
 
+![](https://raw.githubusercontent.com/NEDONION/my-pics-space/main/20251216012927.png)
+
+![](https://raw.githubusercontent.com/NEDONION/my-pics-space/main/20251216013013.png)
+
+![](https://raw.githubusercontent.com/NEDONION/my-pics-space/main/20251216013040.png)
+
+![](https://raw.githubusercontent.com/NEDONION/my-pics-space/main/20251216013103.png)
+
+![](https://raw.githubusercontent.com/NEDONION/my-pics-space/main/20251216013125.png)
+
+![](https://raw.githubusercontent.com/NEDONION/my-pics-space/main/20251216013218.png)
+
+![](https://raw.githubusercontent.com/NEDONION/my-pics-space/main/20251216013344.png)
+
+![](https://raw.githubusercontent.com/NEDONION/my-pics-space/main/20251216013421.png)
+
 ## 目录
 
 - [核心功能](#核心功能)
