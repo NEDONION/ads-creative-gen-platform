@@ -1,15 +1,16 @@
 package copywriting
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"unicode"
 
+	"ads-creative-gen-platform/internal/copywriting/repository"
 	"ads-creative-gen-platform/internal/infra/llm"
 	"ads-creative-gen-platform/internal/models"
-	"ads-creative-gen-platform/pkg/database"
 
 	"github.com/google/uuid"
 )
@@ -17,12 +18,22 @@ import (
 // CopywritingService 负责文案生成与确认
 type CopywritingService struct {
 	qwenClient *llm.QwenClient
+	taskRepo   repository.TaskRepository
 }
 
 // NewCopywritingService 构造服务
 func NewCopywritingService() *CopywritingService {
 	return &CopywritingService{
 		qwenClient: llm.NewQwenClient(),
+		taskRepo:   repository.NewTaskRepository(),
+	}
+}
+
+// NewCopywritingServiceWithDeps 支持注入依赖
+func NewCopywritingServiceWithDeps(qwen *llm.QwenClient, repo repository.TaskRepository) *CopywritingService {
+	return &CopywritingService{
+		qwenClient: qwen,
+		taskRepo:   repo,
 	}
 }
 
@@ -84,7 +95,7 @@ func (s *CopywritingService) GenerateCopywriting(input GenerateCopywritingInput)
 		PromptUsed:             fmt.Sprintf("copywriting_language=%s", targetLanguage),
 	}
 
-	if err := database.DB.Create(&task).Error; err != nil {
+	if err := s.taskRepo.Create(context.Background(), &task); err != nil {
 		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
 
@@ -101,9 +112,9 @@ func (s *CopywritingService) ConfirmCopywriting(input ConfirmCopywritingInput) (
 		return nil, errors.New("task_id is required")
 	}
 
-	var task models.CreativeTask
-	if err := database.DB.Where("uuid = ?", input.TaskID).First(&task).Error; err != nil {
-		return nil, fmt.Errorf("task not found: %w", err)
+	task, err := s.taskRepo.GetByUUID(context.Background(), input.TaskID)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(task.CTACandidates) == 0 || len(task.SellingPointCandidates) == 0 {
@@ -160,16 +171,12 @@ func (s *CopywritingService) ConfirmCopywriting(input ConfirmCopywritingInput) (
 		"num_variants":        input.NumVariants,
 	}
 
-	if err := database.DB.Model(&task).Updates(updates).Error; err != nil {
+	if err := s.taskRepo.UpdateFields(context.Background(), task.ID, updates); err != nil {
 		return nil, fmt.Errorf("update task failed: %w", err)
 	}
 
 	// 重新查询最新任务
-	if err := database.DB.Where("uuid = ?", input.TaskID).First(&task).Error; err != nil {
-		return nil, err
-	}
-
-	return &task, nil
+	return s.taskRepo.GetByUUID(context.Background(), input.TaskID)
 }
 
 // resolveLanguage 决定生成语言（显式选择优先，其次自动检测）

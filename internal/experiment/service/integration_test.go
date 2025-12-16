@@ -7,29 +7,12 @@ import (
 	"strconv"
 	"testing"
 
-	"ads-creative-gen-platform/config"
 	"ads-creative-gen-platform/internal/experiment/repository"
 	"ads-creative-gen-platform/internal/models"
-	"ads-creative-gen-platform/pkg/database"
+	"ads-creative-gen-platform/internal/testutil"
 
 	"github.com/google/uuid"
 )
-
-// resetExperimentTables 清理实验相关表，便于集成测试重复运行。
-func resetExperimentTables(t *testing.T) {
-	t.Helper()
-	stmts := []string{
-		"TRUNCATE experiment_metrics CASCADE",
-		"TRUNCATE experiment_variants CASCADE",
-		"TRUNCATE experiments CASCADE",
-		"TRUNCATE creative_assets CASCADE",
-	}
-	for _, stmt := range stmts {
-		if err := database.DB.Exec(stmt).Error; err != nil {
-			t.Fatalf("重置表失败 %s: %v", stmt, err)
-		}
-	}
-}
 
 // ensureAsset 创建一个可用的素材供实验引用。
 func ensureAsset(t *testing.T) models.CreativeAsset {
@@ -42,24 +25,21 @@ func ensureAsset(t *testing.T) models.CreativeAsset {
 		Height:    1024,
 		PublicURL: "https://example.com/img.png",
 	}
-	if err := database.DB.Create(&asset).Error; err != nil {
+	if err := testutil.DB().Create(&asset).Error; err != nil {
 		t.Fatalf("创建素材失败: %v", err)
 	}
 	return asset
 }
 
-// setupIntegrationDB 初始化数据库连接与迁移，面向集成测试。
-func setupIntegrationDB(t *testing.T) {
-	t.Helper()
-	config.LoadConfig()
-	database.InitDatabase()
-	database.MigrateTables()
-	resetExperimentTables(t)
-}
-
 // TestIntegration_ExperimentFlow 覆盖创建实验、状态变更、分流、埋点、指标汇总的端到端流程（依赖真实数据库）。
 func TestIntegration_ExperimentFlow(t *testing.T) {
-	setupIntegrationDB(t)
+	testutil.EnsureIntegrationDB(t)
+	testutil.ResetTables(t, []string{
+		"TRUNCATE experiment_metrics CASCADE",
+		"TRUNCATE experiment_variants CASCADE",
+		"TRUNCATE experiments CASCADE",
+		"TRUNCATE creative_assets CASCADE",
+	})
 
 	asset := ensureAsset(t)
 
