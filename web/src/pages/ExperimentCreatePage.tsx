@@ -86,10 +86,12 @@ const ExperimentCreatePage: React.FC = () => {
     setVariants((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const getCreativeLabel = (id: string) => {
-    const opt = creativeOptions.find((o) => o.id === String(id));
+  const findCreativeOption = (id: string | number) => creativeOptions.find((opt) => String(opt.id) === String(id));
+
+  const getCreativeLabel = (id: string | number) => {
+    const opt = findCreativeOption(id);
     if (opt) return opt.label;
-    return id;
+    return String(id);
   };
 
   const handleCreate = async () => {
@@ -185,149 +187,148 @@ const ExperimentCreatePage: React.FC = () => {
 
                 <div className="compact-section-title" style={{ marginTop: 8 }}>{t('variantConfigLabel')}</div>
                 <div className="compact-form-grid">
-                  {variants.map((v, idx) => (
-                    <div key={idx} className="compact-card" style={{ padding: 10, border: '1px solid #f0f0f0' }}>
-                      <div className="compact-form-group">
-                        <label className="compact-label">{t('creativeId')}</label>
-                        <select
-                          className="compact-input"
-                          value={v.creative_id || ''}
-                          onChange={(e) => updateVariant(idx, 'creative_id', e.target.value)}
-                        >
-                          <option value="">{t('selectCreative')}</option>
-                          {filteredCreativeOptions.map((opt) => (
-                            <option key={opt.id} value={opt.id}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                        {v.creative_id && (
-                          <div className="compact-thumb" style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            {creativeOptions.find((opt) => opt.id === v.creative_id)?.thumb ? (
-                              <img
-                                src={creativeOptions.find((opt) => opt.id === v.creative_id)!.thumb}
-                                alt={t('creativeId')}
-                                style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #eee' }}
-                              />
-                            ) : (
-                              <div style={{ width: 80, height: 80, borderRadius: 6, border: '1px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 12 }}>
-                                {t('noThumb')}
+                  {variants.map((v, idx) => {
+                    const creative = findCreativeOption(v.creative_id);
+                    return (
+                      <div key={idx} className="compact-card" style={{ padding: 10, border: '1px solid #f0f0f0' }}>
+                        <div className="compact-form-group">
+                          <label className="compact-label">{t('creativeId')}</label>
+                          <select
+                            className="compact-input"
+                            value={v.creative_id || ''}
+                            onChange={(e) => updateVariant(idx, 'creative_id', e.target.value)}
+                          >
+                            <option value="">{t('selectCreative')}</option>
+                            {filteredCreativeOptions.map((opt) => (
+                              <option key={opt.id} value={opt.id}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                          {v.creative_id && (
+                            <div className="compact-thumb" style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                              {creative?.thumb ? (
+                                <img
+                                  src={creative.thumb}
+                                  alt={t('creativeId')}
+                                  style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #eee' }}
+                                />
+                              ) : (
+                                <div style={{ width: 80, height: 80, borderRadius: 6, border: '1px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 12 }}>
+                                  {t('noThumb')}
+                                </div>
+                              )}
+                              <div style={{ fontSize: 12, color: '#555' }}>
+                                {getCreativeLabel(v.creative_id)}
                               </div>
-                            )}
-                            <div style={{ fontSize: 12, color: '#555' }}>
-                              {getCreativeLabel(v.creative_id)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="compact-form-group">
+                          <label className="compact-label">{t('weight')} (0-1)</label>
+                          <input
+                            className="compact-input"
+                            type="number"
+                            step="0.1"
+                            value={v.weight}
+                            onChange={(e) => updateVariant(idx, 'weight', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="compact-form-group">
+                          <label className="compact-label">{t('ctaOverride')}</label>
+                          {(() => {
+                            const creativeCTA = creative?.cta_text || '';
+                            const selectedCTA = (v as any).cta_text || '';
+                            const options = [{ value: '', label: t('useDefault') }];
+                            if (creativeCTA) {
+                              options.push({ value: creativeCTA, label: `${t('creativeCTA')}${creativeCTA}` });
+                            }
+                            if (selectedCTA && selectedCTA !== creativeCTA) {
+                              options.push({ value: selectedCTA, label: `${t('currentOverride')}${selectedCTA}` });
+                            }
+                            return (
+                              <>
+                                <select
+                                  className="compact-input"
+                                  value={selectedCTA}
+                                  onChange={(e) => updateVariant(idx, 'cta_text' as keyof ExperimentVariantInput, e.target.value)}
+                                >
+                                  {options.map((opt) => (
+                                    <option key={opt.value || 'default'} value={opt.value}>
+                                      {opt.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                <input
+                                  className="compact-input"
+                                  style={{ marginTop: 6 }}
+                                  type="text"
+                                  placeholder={t('ctaPlaceholder')}
+                                  value={selectedCTA}
+                                  onChange={(e) => updateVariant(idx, 'cta_text' as keyof ExperimentVariantInput, e.target.value)}
+                                />
+                              </>
+                            );
+                          })()}
+                        </div>
+                        <div className="compact-form-group">
+                          <label className="compact-label">{t('spOverride')}</label>
+                          {(() => {
+                            const spOptions = Array.isArray(creative?.selling_points) ? creative.selling_points : [];
+                            const selectedSP: string[] = Array.isArray((v as any).selling_points) ? ((v as any).selling_points as any) : [];
+                            const toggleSP = (sp: string) => {
+                              const next = selectedSP.includes(sp) ? selectedSP.filter((s: string) => s !== sp) : [...selectedSP, sp];
+                              updateVariant(idx, 'selling_points' as keyof ExperimentVariantInput, next);
+                            };
+                            return spOptions.length > 0 ? (
+                              <div className="option-grid">
+                                {spOptions.map((sp) => (
+                                  <label key={sp} className={`checkbox-option ${selectedSP.includes(sp) ? 'active' : ''}`}>
+                                    <input type="checkbox" checked={selectedSP.includes(sp)} onChange={() => toggleSP(sp)} />
+                                    <span className="checkbox-label">{sp}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            ) : (
+                              <div style={{ color: '#999', fontSize: 12 }}>{t('pendingGen')}</div>
+                            );
+                          })()}
+                        </div>
+                        {v.creative_id && (
+                          <div className="compact-form-group">
+                            <label className="compact-label">{t('copywriting')}</label>
+                            <div style={{ background: '#fafafa', border: '1px solid #eee', borderRadius: 6, padding: 8, fontSize: 12, color: '#555' }}>
+                              {(() => {
+                                return creative?.cta_text ? (
+                                  <div style={{ marginBottom: 4 }}>
+                                    <strong>CTA：</strong>
+                                    <span>{creative.cta_text}</span>
+                                  </div>
+                                ) : (
+                                  <div style={{ marginBottom: 4, color: '#999' }}>{t('pendingGen')}</div>
+                                );
+                              })()}
+                              {(() => {
+                                return creative?.selling_points && creative.selling_points.length > 0 ? (
+                                  <div>
+                                    <strong>{t('sellingPointsLabel')}：</strong>
+                                    <span>{creative.selling_points.slice(0, 3).join(' / ')}</span>
+                                  </div>
+                                ) : (
+                                  <div style={{ color: '#999' }}>{t('pendingGen')}</div>
+                                );
+                              })()}
                             </div>
                           </div>
                         )}
+                        {variants.length > 2 && (
+                          <button className="compact-btn compact-btn-text compact-btn-xs" onClick={() => removeVariant(idx)}>
+                            {t('delete')}
+                          </button>
+                        )}
                       </div>
-                      <div className="compact-form-group">
-                        <label className="compact-label">{t('weight')} (0-1)</label>
-                        <input
-                          className="compact-input"
-                          type="number"
-                          step="0.1"
-                          value={v.weight}
-                          onChange={(e) => updateVariant(idx, 'weight', parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-                      <div className="compact-form-group">
-                        <label className="compact-label">{t('ctaOverride')}</label>
-                        {(() => {
-                          const info = (creativeOptions.find((opt) => opt.id === v.creative_id) || {}) as { cta_text?: string };
-                          const creativeCTA = info.cta_text || '';
-                          const selectedCTA = (v as any).cta_text || '';
-                          const options = [{ value: '', label: t('useDefault') }];
-                          if (creativeCTA) {
-                            options.push({ value: creativeCTA, label: `${t('creativeCTA')}${creativeCTA}` });
-                          }
-                          if (selectedCTA && selectedCTA !== creativeCTA) {
-                            options.push({ value: selectedCTA, label: `${t('currentOverride')}${selectedCTA}` });
-                          }
-                          return (
-                            <>
-                              <select
-                                className="compact-input"
-                                value={selectedCTA}
-                                onChange={(e) => updateVariant(idx, 'cta_text' as keyof ExperimentVariantInput, e.target.value)}
-                              >
-                                {options.map((opt) => (
-                                  <option key={opt.value || 'default'} value={opt.value}>
-                                    {opt.label}
-                                  </option>
-                                ))}
-                              </select>
-                              <input
-                                className="compact-input"
-                                style={{ marginTop: 6 }}
-                                type="text"
-                                placeholder={t('ctaPlaceholder')}
-                                value={selectedCTA}
-                                onChange={(e) => updateVariant(idx, 'cta_text' as keyof ExperimentVariantInput, e.target.value)}
-                              />
-                            </>
-                          );
-                        })()}
-                      </div>
-                      <div className="compact-form-group">
-                        <label className="compact-label">{t('spOverride')}</label>
-                        {(() => {
-                          const info = (creativeOptions.find((opt) => opt.id === v.creative_id) || {}) as { selling_points?: string[] };
-                          const spOptions = Array.isArray(info.selling_points) ? info.selling_points : [];
-                          const selectedSP: string[] = Array.isArray((v as any).selling_points) ? ((v as any).selling_points as any) : [];
-                          const toggleSP = (sp: string) => {
-                            const next = selectedSP.includes(sp) ? selectedSP.filter((s: string) => s !== sp) : [...selectedSP, sp];
-                            updateVariant(idx, 'selling_points' as keyof ExperimentVariantInput, next);
-                          };
-                          return spOptions.length > 0 ? (
-                            <div className="option-grid">
-                              {spOptions.map((sp) => (
-                                <label key={sp} className={`checkbox-option ${selectedSP.includes(sp) ? 'active' : ''}`}>
-                                  <input type="checkbox" checked={selectedSP.includes(sp)} onChange={() => toggleSP(sp)} />
-                                  <span className="checkbox-label">{sp}</span>
-                                </label>
-                              ))}
-                            </div>
-                          ) : (
-                            <div style={{ color: '#999', fontSize: 12 }}>{t('pendingGen')}</div>
-                          );
-                        })()}
-                      </div>
-                      {v.creative_id && (
-                        <div className="compact-form-group">
-                          <label className="compact-label">{t('copywriting')}</label>
-                          <div style={{ background: '#fafafa', border: '1px solid #eee', borderRadius: 6, padding: 8, fontSize: 12, color: '#555' }}>
-                            {(() => {
-                              const info = creativeOptions.find((opt) => opt.id === v.creative_id);
-                              return info?.cta_text ? (
-                                <div style={{ marginBottom: 4 }}>
-                                  <strong>CTA：</strong>
-                                  <span>{info.cta_text}</span>
-                                </div>
-                              ) : (
-                                <div style={{ marginBottom: 4, color: '#999' }}>{t('pendingGen')}</div>
-                              );
-                            })()}
-                            {(() => {
-                              const info = creativeOptions.find((opt) => opt.id === v.creative_id);
-                              return info?.selling_points && info.selling_points.length > 0 ? (
-                                <div>
-                                  <strong>{t('sellingPointsLabel')}：</strong>
-                                  <span>{info.selling_points.slice(0, 3).join(' / ')}</span>
-                                </div>
-                              ) : (
-                                <div style={{ color: '#999' }}>{t('pendingGen')}</div>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      )}
-                      {variants.length > 2 && (
-                        <button className="compact-btn compact-btn-text compact-btn-xs" onClick={() => removeVariant(idx)}>
-                          {t('delete')}
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="compact-form-actions" style={{ marginTop: 8, display: 'flex', gap: 10 }}>
                   <button className="compact-btn compact-btn-outline compact-btn-sm" onClick={addVariant}>
