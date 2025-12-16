@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"ads-creative-gen-platform/internal/copywriting"
+	"ads-creative-gen-platform/internal/copywriting/repository"
 	"ads-creative-gen-platform/internal/models"
 	"ads-creative-gen-platform/internal/testutil"
 
@@ -38,7 +39,7 @@ func TestCopywriting_Confirm(t *testing.T) {
 		t.Fatalf("预置任务失败: %v", err)
 	}
 
-	svc := &copywriting.CopywritingService{} // 不调用 Generate，不需要 LLM
+	svc := copywriting.NewCopywritingServiceWithDeps(nil, repository.NewTaskRepository())
 	updated, err := svc.ConfirmCopywriting(copywriting.ConfirmCopywritingInput{
 		TaskID:            task.UUID,
 		SelectedCTAIndex:  1,
