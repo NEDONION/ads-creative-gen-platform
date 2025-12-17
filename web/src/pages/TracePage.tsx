@@ -52,6 +52,8 @@ const TracePage: React.FC = () => {
       return;
     }
     setSelected(null);
+    setMessage(null);
+    setLoading(true);
     try {
       const res = await traceAPI.detail(id);
       if (res.code === 0 && res.data) {
@@ -61,6 +63,8 @@ const TracePage: React.FC = () => {
       }
     } catch (err) {
       setMessage((err as Error).message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -173,10 +177,16 @@ const TracePage: React.FC = () => {
                                   </button>
                                 </td>
                               </tr>
-                              {expanded && selected && (
+                              {expanded && (
                                 <tr className="trace-detail-row">
                                   <td colSpan={7}>
-                                    <div className="trace-detail">
+                                    {loading && !selected ? (
+                                      <div className="compact-loading" style={{ padding: 20 }}>
+                                        <div className="loading"></div>
+                                        <div className="compact-loading-text">{t('loading')}</div>
+                                      </div>
+                                    ) : selected && selected.trace_id === trace.trace_id ? (
+                                      <div className="trace-detail">
                                       <div className="trace-detail-meta">
                                         <div>
                                           <div className="trace-meta-label">Trace ID</div>
@@ -236,6 +246,7 @@ const TracePage: React.FC = () => {
                                         {(selected.steps || []).length === 0 && <div className="trace-step-empty">{t('noSteps')}</div>}
                                       </div>
                                     </div>
+                                    ) : null}
                                   </td>
                                 </tr>
                               )}

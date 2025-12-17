@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -60,13 +62,24 @@ type Targets struct {
 	Trace      *tracing.TraceService
 }
 
+func envBool(key string, def bool) bool {
+	val := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
+	if val == "true" || val == "1" || val == "yes" {
+		return true
+	}
+	if val == "false" || val == "0" || val == "no" {
+		return false
+	}
+	return def
+}
+
 // New 创建 Manager
 func New(cfg Config, target Targets) *Manager {
 	if cfg.Interval <= 0 {
 		cfg.Interval = 3 * time.Minute
 	}
 	if cfg.Timeout <= 0 {
-		cfg.Timeout = 2 * time.Second
+		cfg.Timeout = 20 * time.Second
 	}
 	m := &Manager{
 		cfg:    cfg,
@@ -107,6 +120,8 @@ func (m *Manager) runOnce() {
 	ctx, cancel := context.WithTimeout(context.Background(), m.cfg.Timeout)
 	defer cancel()
 
+	skipDB := envBool("WARMUP_SKIP_DB", false)
+
 	var actions []string
 	var errs []string
 	var wg sync.WaitGroup
@@ -124,23 +139,29 @@ func (m *Manager) runOnce() {
 	}
 
 	// 1) DB ping + 核心表轻查询
-	if m.target.DB != nil {
+	if m.target.DB != nil && !skipDB {
 		addAction("db:ping")
+		pingOK := true
 		if _, err := m.target.DB.ExecContext(ctx, "SELECT 1"); err != nil {
 			addErr("db ping: " + err.Error())
+			pingOK = false
 		}
 
-		coreTables := []string{"creative_tasks", "creative_assets", "experiments", "model_traces"}
-		for _, tbl := range coreTables {
-			t := tbl
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				addAction("db:" + t)
-				if _, err := m.target.DB.ExecContext(ctx, "SELECT id FROM "+t+" LIMIT 1"); err != nil {
-					addErr(t + ": " + err.Error())
-				}
-			}()
+		if pingOK {
+			coreTables := []string{"creative_tasks", "creative_assets", "experiments", "model_traces"}
+			for _, tbl := range coreTables {
+				t := tbl
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					addAction("db:" + t)
+					if _, err := m.target.DB.ExecContext(ctx, "SELECT id FROM "+t+" LIMIT 1"); err != nil {
+						addErr(t + ": " + err.Error())
+					}
+				}()
+			}
+		} else {
+			addErr("skip core table checks due to ping failure")
 		}
 	}
 

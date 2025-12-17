@@ -48,17 +48,20 @@ const TasksPage: React.FC = () => {
 
   const viewTask = async (taskId: string) => {
     setDetailRefreshing(true);
+    setShowDetail(true);
+    setSelectedTask(null);
     try {
       const response = await creativeAPI.getTask(taskId);
       if (response.code === 0 && response.data) {
         setSelectedTask(response.data);
-        setShowDetail(true);
       } else {
         alert('获取任务详情失败: ' + response.message);
+        setShowDetail(false);
       }
     } catch (err) {
       alert('获取任务详情失败: ' + (err as Error).message);
       console.error('Get task detail error:', err);
+      setShowDetail(false);
     }
     setDetailRefreshing(false);
   };
@@ -269,7 +272,7 @@ const TasksPage: React.FC = () => {
               </>
             ) : (
               <>
-                    <div className="compact-toolbar">
+                <div className="compact-toolbar">
                   <div className="compact-toolbar-left">
                     <button className="compact-btn compact-btn-outline compact-btn-sm" onClick={closeTaskDetail}>
                       <i className="fas fa-arrow-left"></i>
@@ -285,6 +288,13 @@ const TasksPage: React.FC = () => {
                     )}
                   </div>
                 </div>
+
+                {detailRefreshing && !selectedTask && (
+                  <div className="compact-loading">
+                    <div className="loading"></div>
+                    <div className="compact-loading-text">{t('loading')}</div>
+                  </div>
+                )}
 
                     {selectedTask && (
                       <>
