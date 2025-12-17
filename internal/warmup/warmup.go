@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -73,6 +74,19 @@ func envBool(key string, def bool) bool {
 	return def
 }
 
+var (
+	hostPortRe = regexp.MustCompile(`([0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]{2,5}|[A-Za-z0-9.-]+\.[A-Za-z]{2,}:[0-9]{2,5}`)
+	userRe     = regexp.MustCompile(`user=[^\s]+`)
+	dbRe       = regexp.MustCompile(`database=[^\s]+`)
+)
+
+func sanitizeError(msg string) string {
+	m := userRe.ReplaceAllString(msg, "user=***")
+	m = dbRe.ReplaceAllString(m, "database=***")
+	m = hostPortRe.ReplaceAllString(m, "<host>")
+	return m
+}
+
 // New 创建 Manager
 func New(cfg Config, target Targets) *Manager {
 	if cfg.Interval <= 0 {
@@ -129,7 +143,7 @@ func (m *Manager) runOnce() {
 
 	addErr := func(msg string) {
 		mu.Lock()
-		errs = append(errs, msg)
+		errs = append(errs, sanitizeError(msg))
 		mu.Unlock()
 	}
 	addAction := func(msg string) {
