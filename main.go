@@ -94,6 +94,13 @@ func main() {
 	}
 
 	// 静态文件服务 - 托管前端
+	// React 路由使用 /assets 作为前端页面路径，防止与静态资源目录冲突导致 404。
+	r.GET("/assets", func(c *gin.Context) {
+		c.File("./web/dist/index.html")
+	})
+	r.GET("/assets/", func(c *gin.Context) {
+		c.File("./web/dist/index.html")
+	})
 	r.Static("/assets", "./web/dist/assets")
 	r.StaticFile("/favicon.ico", "./web/dist/favicon.ico")
 	r.StaticFile("/vite.svg", "./web/dist/vite.svg")
