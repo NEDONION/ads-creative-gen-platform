@@ -94,6 +94,14 @@ func (r *CachedTraceRepository) RecoverStuckRunning(maxAge time.Duration, markMe
 	return affected, err
 }
 
+func (r *CachedTraceRepository) FailRunningBySource(source, markMessage string) (int64, error) {
+	affected, err := r.inner.FailRunningBySource(source, markMessage)
+	if affected > 0 {
+		r.cache.DeleteByPrefix(context.Background(), "traces:list:")
+	}
+	return affected, err
+}
+
 func (r *CachedTraceRepository) invalidate(traceID string) {
 	r.cache.DeleteByPrefix(context.Background(), "traces:list:")
 	if traceID != "" {

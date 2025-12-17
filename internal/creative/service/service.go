@@ -16,6 +16,7 @@ import (
 	"ads-creative-gen-platform/internal/ports"
 	"ads-creative-gen-platform/internal/settings"
 	"ads-creative-gen-platform/internal/shared"
+	"ads-creative-gen-platform/internal/tracing"
 	"ads-creative-gen-platform/pkg/database"
 
 	"github.com/google/uuid"
@@ -27,6 +28,7 @@ type CreativeService struct {
 	assetRepo   ports.AssetRepository
 	processor   *TaskProcessor
 	enqueueFunc func(taskID uint) error
+	traceSvc    *tracing.TraceService
 }
 
 // NewCreativeService 创建服务
@@ -55,6 +57,7 @@ func NewCreativeService() *CreativeService {
 		taskRepo:  taskRepo,
 		assetRepo: assetRepo,
 		processor: NewTaskProcessor(llmClient, storageClient, taskRepo, assetRepo, poller),
+		traceSvc:  tracing.NewTraceService(),
 	}
 }
 
@@ -64,12 +67,17 @@ func NewCreativeServiceWithDeps(
 	assetRepo ports.AssetRepository,
 	processor *TaskProcessor,
 	enqueue func(taskID uint) error,
+	traceSvc *tracing.TraceService,
 ) *CreativeService {
+	if traceSvc == nil {
+		traceSvc = tracing.NewTraceService()
+	}
 	return &CreativeService{
 		taskRepo:    taskRepo,
 		assetRepo:   assetRepo,
 		processor:   processor,
 		enqueueFunc: enqueue,
+		traceSvc:    traceSvc,
 	}
 }
 
@@ -151,38 +159,97 @@ func (s *CreativeService) StartCreativeGeneration(taskUUID string, opts *StartCr
 		return fmt.Errorf("task not found: %w", err)
 	}
 
+	// 为重试创建全新任务，旧任务标记失败且清理素材
+	newTask := s.cloneTask(task)
+
 	updates := map[string]interface{}{
-		"status":       models.TaskPending,
-		"progress":     0,
-		"started_at":   nil,
-		"completed_at": nil,
+		"status":       models.TaskFailed,
+		"progress":     settings.ProgressCompleted,
+		"completed_at": time.Now(),
+		"error_message": fmt.Sprintf(
+			"restarted as %s", newTask.UUID),
 	}
 	if opts != nil {
 		if opts.ProductImageURL != "" {
-			updates["product_image_url"] = opts.ProductImageURL
+			newTask.ProductImageURL = opts.ProductImageURL
 		}
 		if opts.Style != "" {
-			updates["requested_styles"] = models.StringArray{opts.Style}
+			newTask.RequestedStyles = models.StringArray{opts.Style}
 		}
 		if opts.NumVariants > 0 {
-			updates["num_variants"] = opts.NumVariants
+			newTask.NumVariants = opts.NumVariants
 		}
 		if len(opts.Formats) > 0 {
-			updates["requested_formats"] = models.StringArray(opts.Formats)
+			newTask.RequestedFormats = models.StringArray(opts.Formats)
 		}
 		if len(opts.VariantPrompts) > 0 {
-			updates["variant_prompts"] = models.StringArray(opts.VariantPrompts)
+			newTask.VariantPrompts = models.StringArray(opts.VariantPrompts)
 		}
 		if len(opts.VariantStyles) > 0 {
-			updates["variant_styles"] = models.StringArray(opts.VariantStyles)
+			newTask.VariantStyles = models.StringArray(opts.VariantStyles)
 		}
 	}
 
+	// 更新旧任务为失败状态
 	if err := s.taskRepo.UpdateFields(context.Background(), task.ID, updates); err != nil {
 		return fmt.Errorf("failed to update task: %w", err)
 	}
 
-	return s.enqueueOrProcess(task.ID)
+	// 回写旧任务的 retry_to
+	_ = s.taskRepo.UpdateFields(context.Background(), task.ID, map[string]interface{}{"retry_to": newTask.UUID})
+
+	// 标记旧的 running trace 失败，确保重试时不会复用卡住的链路
+	if s.traceSvc != nil {
+		_, _ = s.traceSvc.FailRunningBySource(task.UUID, "retry task, mark previous trace as failed")
+	}
+
+	// 创建新任务
+	if err := s.taskRepo.Create(context.Background(), newTask); err != nil {
+		return fmt.Errorf("failed to create retry task: %w", err)
+	}
+
+	// 入队新任务
+	if err := s.enqueueOrProcess(newTask.ID); err != nil {
+		return fmt.Errorf("enqueue retry task failed: %w", err)
+	}
+
+	return nil
+}
+
+// cloneTask 基于旧任务创建新任务，保留配置并标记来源
+func (s *CreativeService) cloneTask(old *models.CreativeTask) *models.CreativeTask {
+	if old == nil {
+		return nil
+	}
+	return &models.CreativeTask{
+		UUIDModel: models.UUIDModel{UUID: uuid.New().String()},
+		UserID:    old.UserID,
+		ProjectID: old.ProjectID,
+
+		Title:           old.Title,
+		ProductName:     old.ProductName,
+		SellingPoints:   append(models.StringArray{}, old.SellingPoints...),
+		ProductImageURL: old.ProductImageURL,
+		BrandLogoURL:    old.BrandLogoURL,
+		CopywritingRaw:  old.CopywritingRaw,
+		PromptUsed:      old.PromptUsed,
+
+		RequestedFormats:       append(models.StringArray{}, old.RequestedFormats...),
+		RequestedStyles:        append(models.StringArray{}, old.RequestedStyles...),
+		NumVariants:            old.NumVariants,
+		CTAText:                old.CTAText,
+		CTACandidates:          append(models.StringArray{}, old.CTACandidates...),
+		SellingPointCandidates: append(models.StringArray{}, old.SellingPointCandidates...),
+		SelectedCTAIndex:       old.SelectedCTAIndex,
+		SelectedSPIndexes:      append(models.StringArray{}, old.SelectedSPIndexes...),
+		CopywritingGenerated:   old.CopywritingGenerated,
+		VariantPrompts:         append(models.StringArray{}, old.VariantPrompts...),
+		VariantStyles:          append(models.StringArray{}, old.VariantStyles...),
+
+		Status:    models.TaskPending,
+		Progress:  0,
+		RetryFrom: old.UUID,
+	}
 }
 
 // GetTask 查询任务详情（含资产）
@@ -238,6 +305,8 @@ type TaskDTO struct {
 	CompletedAt   string             `json:"completed_at,omitempty"`
 	ErrorMessage  string             `json:"error_message,omitempty"`
 	FirstImage    string             `json:"first_image,omitempty"`
+	RetryFrom     string             `json:"retry_from,omitempty"`
+	RetryTo       string             `json:"retry_to,omitempty"`
 }
 
 // ListAssetsQuery 素材查询参数
@@ -347,6 +416,8 @@ func (s *CreativeService) ListAllTasks(query ListTasksQuery) ([]TaskDTO, int64, 
 			CompletedAt:   completedAt,
 			ErrorMessage:  task.ErrorMessage,
 			FirstImage:    firstImage,
+			RetryFrom:     task.RetryFrom,
+			RetryTo:       task.RetryTo,
 		}
 		taskDTOs = append(taskDTOs, taskDTO)
 	}

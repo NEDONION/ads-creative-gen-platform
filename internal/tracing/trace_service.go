@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"ads-creative-gen-platform/config"
-	"ads-creative-gen-platform/internal/infra/cache"
 	"ads-creative-gen-platform/internal/models"
 	"ads-creative-gen-platform/internal/tracing/repository"
 
@@ -24,18 +22,8 @@ type TraceService struct {
 }
 
 func NewTraceService() *TraceService {
-	cfg := config.CacheConfig
-	ttl := time.Minute
-	if cfg != nil && cfg.DefaultTTL > 0 {
-		ttl = cfg.DefaultTTL
-	}
 	return &TraceService{
-		repo: repository.NewCachedTraceRepository(
-			repository.NewTraceRepository(),
-			cache.NewConfiguredCache(cfg),
-			ttl,
-			cfg != nil && cfg.DisableTracing,
-		),
+		repo: repository.NewTraceRepository(), // 去掉本地缓存，避免多实例间缓存不一致
 	}
 }
 
@@ -145,4 +133,12 @@ func (s *TraceService) ForceFail(traceID, reason string) error {
 		"updated_at":    now,
 	}
 	return s.repo.UpdateTrace(traceID, updates)
+}
+
+// FailRunningBySource 将指定 source 的 running trace 标记失败
+func (s *TraceService) FailRunningBySource(source, reason string) (int64, error) {
+	if reason == "" {
+		reason = "marked failed by source"
+	}
+	return s.repo.FailRunningBySource(source, reason)
 }

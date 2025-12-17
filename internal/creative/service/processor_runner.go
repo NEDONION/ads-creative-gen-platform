@@ -30,11 +30,15 @@ func (p *TaskProcessor) submit(ctx context.Context, task *models.CreativeTask, r
 	if numImages <= 0 {
 		numImages = 1
 	}
+	source := task.UUID
+	if source == "" {
+		source = task.ProductName
+	}
 
 	if task.ProductImageURL != "" {
-		return p.llmClient.GenerateImageWithProduct(ctx, req.Prompt, task.ProductImageURL, req.Size, numImages, task.ProductName, "", task.ProductName)
+		return p.llmClient.GenerateImageWithProduct(ctx, req.Prompt, task.ProductImageURL, req.Size, numImages, source, "", task.ProductName)
 	}
-	return p.llmClient.GenerateImage(ctx, req.Prompt, req.Size, numImages, task.ProductName, "", task.ProductName)
+	return p.llmClient.GenerateImage(ctx, req.Prompt, req.Size, numImages, source, "", task.ProductName)
 }
 
 func (p *TaskProcessor) pollUntilDone(

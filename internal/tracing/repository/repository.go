@@ -14,6 +14,7 @@ type TraceRepository interface {
 	UpdateTrace(traceID string, updates map[string]interface{}) error
 	AddStep(step *models.ModelTraceStep) error
 	RecoverStuckRunning(maxAge time.Duration, markMessage string) (int64, error)
+	FailRunningBySource(source, markMessage string) (int64, error)
 }
 
 type gormTraceRepository struct{}
@@ -89,6 +90,34 @@ func (r *gormTraceRepository) RecoverStuckRunning(maxAge time.Duration, markMess
 	var affected int64
 	now := time.Now()
 	for _, t := range stuck {
+		duration := int(now.Sub(t.StartAt).Milliseconds())
+		updates := map[string]interface{}{
+			"status":        "failed",
+			"end_at":        now,
+			"duration_ms":   duration,
+			"error_message": markMessage,
+			"updated_at":    now,
+		}
+		if err := database.DB.Model(&models.ModelTrace{}).Where("id = ?", t.ID).Updates(updates).Error; err != nil {
+			return affected, fmt.Errorf("update trace %s failed: %w", t.TraceID, err)
+		}
+		affected++
+	}
+	return affected, nil
+}
+
+// FailRunningBySource 将指定 source 的 running trace 标记失败
+func (r *gormTraceRepository) FailRunningBySource(source, markMessage string) (int64, error) {
+	if source == "" {
+		return 0, nil
+	}
+	var traces []models.ModelTrace
+	if err := database.DB.Where("status = ? AND source = ?", "running", source).Find(&traces).Error; err != nil {
+		return 0, fmt.Errorf("query running traces by source failed: %w", err)
+	}
+	var affected int64
+	now := time.Now()
+	for _, t := range traces {
 		duration := int(now.Sub(t.StartAt).Milliseconds())
 		updates := map[string]interface{}{
 			"status":        "failed",

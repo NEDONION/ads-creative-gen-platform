@@ -147,6 +147,8 @@ const messages: Messages = {
   delete: { zh: '删除', en: 'Delete' },
   retryTask: { zh: '重试任务', en: 'Retry task' },
   retrying: { zh: '重试中...', en: 'Retrying...' },
+  retryFromLabel: { zh: '重试自', en: 'Retry from' },
+  retryToLabel: { zh: '重试为', en: 'Retry to' },
   deleteConfirm: { zh: '确定删除该任务及其素材吗？', en: 'Delete this task and assets?' },
   deleteFailed: { zh: '删除失败', en: 'Delete failed' },
   backToList: { zh: '返回列表', en: 'Back to list' },

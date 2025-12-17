@@ -70,6 +70,8 @@ type CreativeTask struct {
 	CopywritingGenerated   bool        `gorm:"default:false" json:"copywriting_generated"`
 	VariantPrompts         StringArray `gorm:"type:json" json:"variant_prompts,omitempty"`
 	VariantStyles          StringArray `gorm:"type:json" json:"variant_styles,omitempty"`
+	RetryFrom              string      `gorm:"type:varchar(64);index" json:"retry_from,omitempty"`
+	RetryTo                string      `gorm:"type:varchar(64);index" json:"retry_to,omitempty"`
 
 	// 任务状态
 	Status        TaskStatus `gorm:"type:varchar(20);default:'pending';index" json:"status"`

@@ -60,5 +60,7 @@ func ToDTO(task models.CreativeTask) service.TaskDTO {
 		CompletedAt:   completedAt,
 		ErrorMessage:  task.ErrorMessage,
 		FirstImage:    firstImage,
+		RetryFrom:     task.RetryFrom,
+		RetryTo:       task.RetryTo,
 	}
 }

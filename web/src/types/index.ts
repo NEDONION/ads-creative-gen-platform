@@ -43,6 +43,8 @@ export interface TaskDetailData {
   product_name?: string;
   variant_prompts?: string[];
   variant_styles?: string[];
+  retry_from?: string;
+  retry_to?: string;
 }
 
 export interface GenerateRequest {
@@ -143,6 +145,8 @@ export interface TaskListItem {
   cta_text?: string;
   selling_points?: string[];
   first_image?: string;
+  retry_from?: string;
+  retry_to?: string;
 }
 
 export interface DeleteTaskResponse {

@@ -203,7 +203,8 @@ export const experimentAPI = {
 
 export const traceAPI = {
   list: async (params: { page?: number; page_size?: number; status?: string; model_name?: string; trace_id?: string; product_name?: string } = {}): Promise<ApiResponse<TraceListData>> => {
-    return cachedGet<ApiResponse<TraceListData>>('/model_traces', params);
+    const res = await apiClient.get<ApiResponse<TraceListData>>('/model_traces', { params });
+    return res.data;
   },
   detail: async (traceId: string): Promise<ApiResponse<TraceItem>> => {
     return cachedGet<ApiResponse<TraceItem>>(`/model_traces/${traceId}`);

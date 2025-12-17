@@ -198,6 +198,16 @@ const TasksPage: React.FC = () => {
                                 {task.selling_points && task.selling_points.length > 0 && (
                                   <div style={{ color: '#8c8c8c', fontSize: 12 }}>{t('sellingPointsLabel')}：{task.selling_points.join('、')}</div>
                                 )}
+                                {task.retry_from && (
+                                  <div style={{ color: '#fa8c16', fontSize: 12 }}>
+                                    {t('retryFromLabel')}: {task.retry_from.substring(0, 8)}...
+                                  </div>
+                                )}
+                                {task.retry_to && (
+                                  <div style={{ color: '#8c8c16', fontSize: 12 }}>
+                                    {t('retryToLabel')}: {task.retry_to.substring(0, 8)}...
+                                  </div>
+                                )}
                               </td>
                               <td style={{ minWidth: '140px' }}>{getStatusBadge(task.status)}</td>
                               <td>
@@ -414,6 +424,22 @@ const TasksPage: React.FC = () => {
                           <code className="compact-code">{selectedTask.task_id}</code>
                         </div>
                       </div>
+                      {selectedTask.retry_from && (
+                        <div className="compact-detail-item">
+                          <div className="compact-detail-label">{t('retryFromLabel')}</div>
+                          <div className="compact-detail-value">
+                            <code className="compact-code">{selectedTask.retry_from}</code>
+                          </div>
+                        </div>
+                      )}
+                      {selectedTask.retry_to && (
+                        <div className="compact-detail-item">
+                          <div className="compact-detail-label">{t('retryToLabel')}</div>
+                          <div className="compact-detail-value">
+                            <code className="compact-code">{selectedTask.retry_to}</code>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {selectedTask.error && (
