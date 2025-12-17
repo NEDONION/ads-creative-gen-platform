@@ -154,63 +154,59 @@ func (s *CreativeService) StartCreativeGeneration(taskUUID string, opts *StartCr
 	if taskUUID == "" {
 		return errors.New("task_id is required")
 	}
-	task, err := s.taskRepo.GetByUUID(context.Background(), taskUUID)
+	ctx := context.Background()
+
+	task, err := s.taskRepo.GetByUUID(ctx, taskUUID)
 	if err != nil {
 		return fmt.Errorf("task not found: %w", err)
 	}
 
-	// 为重试创建全新任务，旧任务标记失败且清理素材
-	newTask := s.cloneTask(task)
-
+	now := time.Now()
 	updates := map[string]interface{}{
-		"status":       models.TaskFailed,
-		"progress":     settings.ProgressCompleted,
-		"completed_at": time.Now(),
-		"error_message": fmt.Sprintf(
-			"restarted as %s", newTask.UUID),
+		"status":                models.TaskQueued,
+		"progress":              0,
+		"error_message":         "",
+		"queued_at":             &now,
+		"started_at":            nil,
+		"completed_at":          nil,
+		"processing_duration":   nil,
+		"first_asset_url":       "",
+		"retry_to":              "",
+		"retry_from":            task.RetryFrom,
+		"prompt_used":           "",
+		"copywriting_generated": task.CopywritingGenerated,
 	}
 	if opts != nil {
 		if opts.ProductImageURL != "" {
-			newTask.ProductImageURL = opts.ProductImageURL
+			updates["product_image_url"] = opts.ProductImageURL
 		}
 		if opts.Style != "" {
-			newTask.RequestedStyles = models.StringArray{opts.Style}
+			updates["requested_styles"] = models.StringArray{opts.Style}
 		}
 		if opts.NumVariants > 0 {
-			newTask.NumVariants = opts.NumVariants
+			updates["num_variants"] = opts.NumVariants
 		}
 		if len(opts.Formats) > 0 {
-			newTask.RequestedFormats = models.StringArray(opts.Formats)
+			updates["requested_formats"] = models.StringArray(opts.Formats)
 		}
 		if len(opts.VariantPrompts) > 0 {
-			newTask.VariantPrompts = models.StringArray(opts.VariantPrompts)
+			updates["variant_prompts"] = models.StringArray(opts.VariantPrompts)
 		}
 		if len(opts.VariantStyles) > 0 {
-			newTask.VariantStyles = models.StringArray(opts.VariantStyles)
+			updates["variant_styles"] = models.StringArray(opts.VariantStyles)
 		}
 	}
 
-	// 更新旧任务为失败状态
-	if err := s.taskRepo.UpdateFields(context.Background(), task.ID, updates); err != nil {
+	if s.traceSvc != nil {
+		_, _ = s.traceSvc.FailRunningBySource(task.UUID, "restart creative task")
+	}
+
+	if err := s.taskRepo.UpdateFields(ctx, task.ID, updates); err != nil {
 		return fmt.Errorf("failed to update task: %w", err)
 	}
 
-	// 回写旧任务的 retry_to
-	_ = s.taskRepo.UpdateFields(context.Background(), task.ID, map[string]interface{}{"retry_to": newTask.UUID})
-
-	// 标记旧的 running trace 失败，确保重试时不会复用卡住的链路
-	if s.traceSvc != nil {
-		_, _ = s.traceSvc.FailRunningBySource(task.UUID, "retry task, mark previous trace as failed")
-	}
-
-	// 创建新任务
-	if err := s.taskRepo.Create(context.Background(), newTask); err != nil {
-		return fmt.Errorf("failed to create retry task: %w", err)
-	}
-
-	// 入队新任务
-	if err := s.enqueueOrProcess(newTask.ID); err != nil {
-		return fmt.Errorf("enqueue retry task failed: %w", err)
+	if err := s.enqueueOrProcess(task.ID); err != nil {
+		return fmt.Errorf("enqueue task failed: %w", err)
 	}
 
 	return nil
