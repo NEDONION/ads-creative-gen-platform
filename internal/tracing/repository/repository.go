@@ -4,6 +4,7 @@ import (
 	"ads-creative-gen-platform/internal/models"
 	"ads-creative-gen-platform/pkg/database"
 	"fmt"
+	"time"
 )
 
 type TraceRepository interface {
@@ -12,6 +13,7 @@ type TraceRepository interface {
 	CreateTrace(trace *models.ModelTrace) error
 	UpdateTrace(traceID string, updates map[string]interface{}) error
 	AddStep(step *models.ModelTraceStep) error
+	RecoverStuckRunning(maxAge time.Duration, markMessage string) (int64, error)
 }
 
 type gormTraceRepository struct{}
@@ -70,4 +72,35 @@ func (r *gormTraceRepository) UpdateTrace(traceID string, updates map[string]int
 
 func (r *gormTraceRepository) AddStep(step *models.ModelTraceStep) error {
 	return database.DB.Create(step).Error
+}
+
+// RecoverStuckRunning 将超过 maxAge 仍 running 的 trace 标记为 failed
+func (r *gormTraceRepository) RecoverStuckRunning(maxAge time.Duration, markMessage string) (int64, error) {
+	if maxAge <= 0 {
+		return 0, nil
+	}
+	cutoff := time.Now().Add(-maxAge)
+
+	var stuck []models.ModelTrace
+	if err := database.DB.Where("status = ? AND start_at < ?", "running", cutoff).Find(&stuck).Error; err != nil {
+		return 0, fmt.Errorf("query stuck traces failed: %w", err)
+	}
+
+	var affected int64
+	now := time.Now()
+	for _, t := range stuck {
+		duration := int(now.Sub(t.StartAt).Milliseconds())
+		updates := map[string]interface{}{
+			"status":        "failed",
+			"end_at":        now,
+			"duration_ms":   duration,
+			"error_message": markMessage,
+			"updated_at":    now,
+		}
+		if err := database.DB.Model(&models.ModelTrace{}).Where("id = ?", t.ID).Updates(updates).Error; err != nil {
+			return affected, fmt.Errorf("update trace %s failed: %w", t.TraceID, err)
+		}
+		affected++
+	}
+	return affected, nil
 }

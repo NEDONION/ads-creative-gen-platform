@@ -123,3 +123,26 @@ func (s *TraceService) AddStep(traceID, stepName, component, status, inputPrevie
 	}
 	return s.repo.AddStep(&step)
 }
+
+// RecoverStuckRunning 将长时间 running 的 trace 标记为失败
+func (s *TraceService) RecoverStuckRunning(maxAge time.Duration, markMessage string) (int64, error) {
+	return s.repo.RecoverStuckRunning(maxAge, markMessage)
+}
+
+// ForceFail 手动标记 trace 为失败
+func (s *TraceService) ForceFail(traceID, reason string) error {
+	trace, err := s.repo.Detail(traceID)
+	if err != nil || trace == nil {
+		return fmt.Errorf("trace not found: %w", err)
+	}
+	now := time.Now()
+	duration := int(now.Sub(trace.StartAt).Milliseconds())
+	updates := map[string]interface{}{
+		"status":        "failed",
+		"end_at":        now,
+		"duration_ms":   duration,
+		"error_message": reason,
+		"updated_at":    now,
+	}
+	return s.repo.UpdateTrace(traceID, updates)
+}

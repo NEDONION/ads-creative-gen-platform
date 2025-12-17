@@ -75,6 +75,7 @@ func main() {
 		},
 	)
 	warmupManager.Start()
+	startTraceSweeper(traceHandler.Service())
 
 	// 健康检查
 	r.GET("/health", func(c *gin.Context) {
@@ -123,6 +124,7 @@ func main() {
 		// Trace 调用链接口（目前为示例数据）
 		v1.GET("/model_traces", traceHandler.ListTraces)
 		v1.GET("/model_traces/:id", traceHandler.GetTrace)
+		v1.POST("/model_traces/:id/fail", traceHandler.ForceFail)
 
 		// 预热状态
 		v1.GET("/warmup/status", func(c *gin.Context) {
@@ -175,4 +177,31 @@ func main() {
 	if err := r.Run(port); err != nil {
 		panic(err)
 	}
+}
+
+func startTraceSweeper(svc *tracing.TraceService) {
+	timeout := getTraceTimeout()
+	if timeout <= 0 {
+		return
+	}
+	ticker := time.NewTicker(5 * time.Minute)
+	go func() {
+		for range ticker.C {
+			if svc == nil {
+				continue
+			}
+			if affected, err := svc.RecoverStuckRunning(timeout, "marked failed by sweeper (timeout)"); err == nil && affected > 0 {
+				fmt.Printf("trace sweeper marked %d traces as failed (timeout=%s)\n", affected, timeout)
+			}
+		}
+	}()
+}
+
+func getTraceTimeout() time.Duration {
+	if val := os.Getenv("TRACE_RUNNING_TIMEOUT"); val != "" {
+		if d, err := time.ParseDuration(val); err == nil {
+			return d
+		}
+	}
+	return 15 * time.Minute
 }

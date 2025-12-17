@@ -16,6 +16,7 @@ const TasksPage: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<TaskDetailData | null>(null);
   const [showDetail, setShowDetail] = useState(false);
   const [detailRefreshing, setDetailRefreshing] = useState(false);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
   const pageSize = 15;
 
   useEffect(() => {
@@ -69,6 +70,25 @@ const TasksPage: React.FC = () => {
   const closeTaskDetail = () => {
     setShowDetail(false);
     setSelectedTask(null);
+  };
+
+  const retryTask = async (taskId: string) => {
+    setRetryingId(taskId);
+    try {
+      const res = await creativeAPI.startCreative({ task_id: taskId });
+      if (res.code === 0) {
+        loadTasks();
+        if (selectedTask && selectedTask.task_id === taskId) {
+          viewTask(taskId);
+        }
+      } else {
+        alert(res.message || t('retryFailed'));
+      }
+    } catch (err) {
+      alert(t('retryFailed') + ': ' + (err as Error).message);
+    } finally {
+      setRetryingId(null);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -204,6 +224,14 @@ const TasksPage: React.FC = () => {
                                 </button>
                                 <button
                                   className="compact-btn compact-btn-text compact-btn-xs"
+                                  style={{ color: '#1677ff' }}
+                                  disabled={retryingId === task.id}
+                                  onClick={() => retryTask(task.id)}
+                                >
+                                  {retryingId === task.id ? t('retrying') : t('retryTask')}
+                                </button>
+                                <button
+                                  className="compact-btn compact-btn-text compact-btn-xs"
                                   style={{ color: '#ff4d4f' }}
                                   onClick={async () => {
                                     if (!window.confirm(t('deleteConfirm'))) return;
@@ -284,6 +312,12 @@ const TasksPage: React.FC = () => {
                       <button className="compact-btn compact-btn-outline compact-btn-sm" onClick={() => viewTask(selectedTask.task_id)} disabled={detailRefreshing}>
                         <i className="fas fa-sync"></i>
                         <span>{detailRefreshing ? t('refreshing') : t('refreshDetail')}</span>
+                      </button>
+                    )}
+                    {selectedTask && (
+                      <button className="compact-btn compact-btn-primary compact-btn-sm" onClick={() => retryTask(selectedTask.task_id)} disabled={retryingId === selectedTask.task_id}>
+                        <i className="fas fa-redo"></i>
+                        <span>{retryingId === selectedTask.task_id ? t('retrying') : t('retryTask')}</span>
                       </button>
                     )}
                   </div>

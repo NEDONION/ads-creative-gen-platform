@@ -23,6 +23,7 @@ const TracePage: React.FC = () => {
   const [traces, setTraces] = useState<TraceItem[]>([]);
   const [selected, setSelected] = useState<TraceItem | null>(null);
   const [loading, setLoading] = useState(false);
+  const [marking, setMarking] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState({ trace_id: '', status: '' });
 
@@ -65,6 +66,24 @@ const TracePage: React.FC = () => {
       setMessage((err as Error).message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const forceFail = async (id: string) => {
+    setMarking(id);
+    try {
+      const res = await traceAPI.forceFail(id, t('manualFailReason'));
+      if (res.code === 0) {
+        // refresh list and selected
+        await loadTraces();
+        setSelected(null);
+      } else {
+        setMessage(res.message || t('activityError'));
+      }
+    } catch (err) {
+      setMessage((err as Error).message);
+    } finally {
+      setMarking(null);
     }
   };
 
@@ -152,6 +171,7 @@ const TracePage: React.FC = () => {
                           <th>{t('startTime')}</th>
                           <th>{t('source')}</th>
                           <th>{t('ops')}</th>
+                          <th style={{ width: 140 }}>{t('actions')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -167,13 +187,30 @@ const TracePage: React.FC = () => {
                                 </td>
                                 <td>{trace.duration_ms} ms</td>
                                 <td>{trace.start_at ? new Date(trace.start_at).toLocaleString() : '-'}</td>
-                                <td>{trace.source || '-'}</td>
+                                <td title={trace.source || '-'} style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {trace.source || '-'}
+                                </td>
                                 <td>
                                   <button
                                     className={`compact-btn compact-btn-xs ${expanded ? 'compact-btn-outline' : 'compact-btn-primary'}`}
                                     onClick={() => selectTrace(trace.trace_id)}
                                   >
                                     {expanded ? t('collapse') : t('view')}
+                                  </button>
+                                </td>
+                                <td>
+                                  <button
+                                    className="compact-btn compact-btn-outline compact-btn-xs"
+                                    style={{
+                                      color: trace.status === 'running' ? '#ff4d4f' : '#8c8c8c',
+                                      borderColor: trace.status === 'running' ? '#ffccc7' : '#d9d9d9',
+                                      opacity: trace.status === 'running' ? 1 : 0.7,
+                                    }}
+                                    disabled={trace.status !== 'running' || marking === trace.trace_id}
+                                    onClick={() => forceFail(trace.trace_id)}
+                                    title={trace.status === 'running' ? undefined : t('markFailedHint')}
+                                  >
+                                    {marking === trace.trace_id ? t('retrying') : t('markFailed')}
                                   </button>
                                 </td>
                               </tr>

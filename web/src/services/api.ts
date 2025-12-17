@@ -208,6 +208,11 @@ export const traceAPI = {
   detail: async (traceId: string): Promise<ApiResponse<TraceItem>> => {
     return cachedGet<ApiResponse<TraceItem>>(`/model_traces/${traceId}`);
   },
+  forceFail: async (traceId: string, reason?: string): Promise<ApiResponse> => {
+    const res = await apiClient.post<ApiResponse>(`/model_traces/${traceId}/fail`, { reason });
+    clearCache();
+    return res.data;
+  },
 };
 
 export const warmupAPI = {

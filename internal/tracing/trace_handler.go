@@ -66,3 +66,19 @@ func (h *TraceHandler) GetTrace(c *gin.Context) {
 		"data": trace,
 	})
 }
+
+// ForceFail 手动标记 trace 为失败
+func (h *TraceHandler) ForceFail(c *gin.Context) {
+	traceID := c.Param("id")
+	reason := c.DefaultPostForm("reason", "manually marked as failed")
+	if err := h.service.ForceFail(traceID, reason); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "fail trace failed: " + err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+	})
+}
