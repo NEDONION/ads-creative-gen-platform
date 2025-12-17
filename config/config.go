@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -14,6 +17,7 @@ var (
 	DatabaseConfig *Database
 	TongyiConfig   *Tongyi
 	QiniuConfig    *Qiniu
+	CacheConfig    *Cache
 )
 
 // App 服务配置
@@ -51,6 +55,16 @@ type Qiniu struct {
 	BasePath          string
 }
 
+// Cache 缓存配置
+type Cache struct {
+	Enabled           bool
+	MaxEntries        int
+	DefaultTTL        time.Duration
+	DisableExperiment bool
+	DisableCreative   bool
+	DisableTracing    bool
+}
+
 // LoadConfig 加载所有配置
 func LoadConfig() {
 	// 加载 .env 文件
@@ -63,6 +77,7 @@ func LoadConfig() {
 	loadDatabaseConfig()
 	loadTongyiConfig()
 	loadQiniuConfig()
+	loadCacheConfig()
 
 	log.Println("✓ All configurations loaded successfully")
 }
@@ -156,6 +171,23 @@ func loadQiniuConfig() {
 	log.Println("💡 If using 'Private' bucket, images will require authentication and may not be accessible")
 }
 
+// loadCacheConfig 加载缓存配置
+func loadCacheConfig() {
+	ttlSeconds := parseInt("CACHE_DEFAULT_TTL_SECONDS", 300)
+	if ttlSeconds < 0 {
+		ttlSeconds = 0
+	}
+	CacheConfig = &Cache{
+		Enabled:           parseBool("CACHE_ENABLED", true),
+		MaxEntries:        parseInt("CACHE_MAX_ENTRIES", 5000),
+		DefaultTTL:        time.Duration(ttlSeconds) * time.Second,
+		DisableExperiment: parseBool("CACHE_DISABLE_EXPERIMENT", false),
+		DisableCreative:   parseBool("CACHE_DISABLE_CREATIVE", false),
+		DisableTracing:    parseBool("CACHE_DISABLE_TRACING", false),
+	}
+	log.Printf("✓ Cache config loaded (enabled=%v, max_entries=%d, default_ttl=%s)", CacheConfig.Enabled, CacheConfig.MaxEntries, CacheConfig.DefaultTTL)
+}
+
 // GetDatabaseDSN 返回数据库 DSN 连接字符串
 func GetDatabaseDSN() string {
 	if DatabaseConfig.Db == "postgres" {
@@ -185,4 +217,23 @@ func getEnv(key, defaultValue string) string {
 		return defaultValue
 	}
 	return value
+}
+
+func parseBool(key string, defaultVal bool) bool {
+	val := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
+	if val == "" {
+		return defaultVal
+	}
+	return val == "1" || val == "true" || val == "yes" || val == "on"
+}
+
+func parseInt(key string, defaultVal int) int {
+	val := strings.TrimSpace(os.Getenv(key))
+	if val == "" {
+		return defaultVal
+	}
+	if n, err := strconv.Atoi(val); err == nil {
+		return n
+	}
+	return defaultVal
 }

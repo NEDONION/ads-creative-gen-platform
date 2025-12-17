@@ -1,10 +1,13 @@
 package tracing
 
 import (
-	"ads-creative-gen-platform/internal/models"
-	"ads-creative-gen-platform/pkg/database"
 	"fmt"
 	"time"
+
+	"ads-creative-gen-platform/config"
+	"ads-creative-gen-platform/internal/infra/cache"
+	"ads-creative-gen-platform/internal/models"
+	"ads-creative-gen-platform/internal/tracing/repository"
 
 	"github.com/google/uuid"
 )
@@ -16,10 +19,24 @@ type TraceListResult struct {
 	PageSize int
 }
 
-type TraceService struct{}
+type TraceService struct {
+	repo repository.TraceRepository
+}
 
 func NewTraceService() *TraceService {
-	return &TraceService{}
+	cfg := config.CacheConfig
+	ttl := time.Minute
+	if cfg != nil && cfg.DefaultTTL > 0 {
+		ttl = cfg.DefaultTTL
+	}
+	return &TraceService{
+		repo: repository.NewCachedTraceRepository(
+			repository.NewTraceRepository(),
+			cache.NewConfiguredCache(cfg),
+			ttl,
+			cfg != nil && cfg.DisableTracing,
+		),
+	}
 }
 
 // List traces with filters
@@ -31,30 +48,10 @@ func (s *TraceService) List(page, pageSize int, status, modelName, traceID, prod
 		pageSize = 20
 	}
 
-	query := database.DB.Model(&models.ModelTrace{})
-	if status != "" {
-		query = query.Where("status = ?", status)
+	traces, total, err := s.repo.List(page, pageSize, status, modelName, traceID, productName)
+	if err != nil {
+		return nil, err
 	}
-	if modelName != "" {
-		query = query.Where("model_name = ?", modelName)
-	}
-	if traceID != "" {
-		query = query.Where("trace_id = ?", traceID)
-	}
-	if productName != "" {
-		query = query.Where("product_name = ?", productName)
-	}
-
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		return nil, fmt.Errorf("count traces failed: %w", err)
-	}
-
-	var traces []models.ModelTrace
-	if err := query.Order("start_at desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&traces).Error; err != nil {
-		return nil, fmt.Errorf("list traces failed: %w", err)
-	}
-
 	return &TraceListResult{
 		Traces:   traces,
 		Total:    total,
@@ -65,16 +62,7 @@ func (s *TraceService) List(page, pageSize int, status, modelName, traceID, prod
 
 // Detail returns trace with steps
 func (s *TraceService) Detail(traceID string) (*models.ModelTrace, error) {
-	var trace models.ModelTrace
-	if err := database.DB.Where("trace_id = ?", traceID).First(&trace).Error; err != nil {
-		return nil, fmt.Errorf("trace not found: %w", err)
-	}
-	var steps []models.ModelTraceStep
-	if err := database.DB.Where("trace_id = ?", traceID).Order("start_at asc").Find(&steps).Error; err != nil {
-		return nil, fmt.Errorf("load steps failed: %w", err)
-	}
-	trace.Steps = steps
-	return &trace, nil
+	return s.repo.Detail(traceID)
 }
 
 // StartTrace 创建主 trace
@@ -91,7 +79,7 @@ func (s *TraceService) StartTrace(modelName, modelVersion, source, inputPreview,
 		InputPreview:  inputPreview,
 		OutputPreview: "",
 	}
-	if err := database.DB.Create(&mt).Error; err != nil {
+	if err := s.repo.CreateTrace(&mt); err != nil {
 		return "", fmt.Errorf("create trace failed: %w", err)
 	}
 	return traceID, nil
@@ -99,8 +87,8 @@ func (s *TraceService) StartTrace(modelName, modelVersion, source, inputPreview,
 
 // FinishTrace 更新状态与耗时
 func (s *TraceService) FinishTrace(traceID, status, outputPreview, errorMessage string) error {
-	var trace models.ModelTrace
-	if err := database.DB.Where("trace_id = ?", traceID).First(&trace).Error; err != nil {
+	trace, err := s.repo.Detail(traceID)
+	if err != nil || trace == nil {
 		return fmt.Errorf("trace not found: %w", err)
 	}
 	now := time.Now()
@@ -113,7 +101,10 @@ func (s *TraceService) FinishTrace(traceID, status, outputPreview, errorMessage 
 		"error_message":  errorMessage,
 		"updated_at":     now,
 	}
-	return database.DB.Model(&models.ModelTrace{}).Where("trace_id = ?", traceID).Updates(update).Error
+	if err := s.repo.UpdateTrace(traceID, update); err != nil {
+		return err
+	}
+	return nil
 }
 
 // AddStep 写入步骤
@@ -130,5 +121,5 @@ func (s *TraceService) AddStep(traceID, stepName, component, status, inputPrevie
 		OutputPreview: outputPreview,
 		ErrorMessage:  errorMessage,
 	}
-	return database.DB.Create(&step).Error
+	return s.repo.AddStep(&step)
 }

@@ -45,3 +45,4 @@ assets/generated/
 *.gif
 !docs/**/*.png
 !docs/**/*.jpg
+/.gocache/

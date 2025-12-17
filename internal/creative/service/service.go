@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
+	"ads-creative-gen-platform/config"
 	"ads-creative-gen-platform/internal/creative/repository"
+	"ads-creative-gen-platform/internal/infra/cache"
 	"ads-creative-gen-platform/internal/infra/llm"
 	"ads-creative-gen-platform/internal/infra/storage"
 	"ads-creative-gen-platform/internal/models"
@@ -30,10 +33,23 @@ type CreativeService struct {
 func NewCreativeService() *CreativeService {
 	llmClient := llm.NewTongyiClient()
 	storageClient := storage.NewQiniuClient()
-	taskRepo := repository.NewTaskRepository(database.DB)
-	assetRepo := repository.NewAssetRepository(database.DB)
+	baseTaskRepo := repository.NewTaskRepository(database.DB)
+	baseAssetRepo := repository.NewAssetRepository(database.DB)
 
 	poller := Poller{Interval: settings.PollInterval, MaxAttempts: settings.MaxPollAttempts}
+
+	cacheCfg := config.CacheConfig
+	dataCache := cache.NewConfiguredCache(cacheCfg)
+	if cacheCfg != nil && cacheCfg.DisableCreative {
+		dataCache = cache.NoopCache{}
+	}
+	ttl := time.Minute
+	if cacheCfg != nil && cacheCfg.DefaultTTL > 0 {
+		ttl = cacheCfg.DefaultTTL
+	}
+
+	taskRepo := repository.NewCachedTaskRepository(baseTaskRepo, dataCache, ttl)
+	assetRepo := repository.NewCachedAssetRepository(baseAssetRepo, dataCache, ttl)
 
 	return &CreativeService{
 		taskRepo:  taskRepo,

@@ -1,13 +1,16 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
 	"strconv"
 	"time"
 
+	"ads-creative-gen-platform/config"
 	"ads-creative-gen-platform/internal/experiment/repository"
+	"ads-creative-gen-platform/internal/infra/cache"
 	"ads-creative-gen-platform/internal/models"
 
 	"github.com/google/uuid"
@@ -15,16 +18,67 @@ import (
 
 // ExperimentService 实验服务
 type ExperimentService struct {
-	repo repository.ExperimentRepository
+	repo       repository.ExperimentRepository
+	cacheTTL   time.Duration
+	metricsTTL time.Duration
 }
 
 func NewExperimentService() *ExperimentService {
-	return &ExperimentService{repo: repository.NewExperimentRepository()}
+	cacheCfg := config.CacheConfig
+	var ttl time.Duration
+	if cacheCfg != nil && cacheCfg.DefaultTTL > 0 {
+		ttl = cacheCfg.DefaultTTL
+	} else {
+		ttl = 5 * time.Minute
+	}
+	return NewExperimentServiceWithDeps(
+		repository.NewCachedExperimentRepository(
+			repository.NewExperimentRepository(),
+			cache.NewConfiguredCache(cacheCfg),
+			ttl,
+			ttl/2,
+			cacheCfg != nil && cacheCfg.DisableExperiment,
+		),
+		ttl,
+		ttl/2,
+	)
 }
 
 // NewExperimentServiceWithRepo 支持依赖注入
 func NewExperimentServiceWithRepo(repo repository.ExperimentRepository) *ExperimentService {
-	return &ExperimentService{repo: repo}
+	cacheCfg := config.CacheConfig
+	var ttl time.Duration
+	if cacheCfg != nil && cacheCfg.DefaultTTL > 0 {
+		ttl = cacheCfg.DefaultTTL
+	} else {
+		ttl = 5 * time.Minute
+	}
+	return NewExperimentServiceWithDeps(
+		repository.NewCachedExperimentRepository(
+			repo,
+			cache.NewConfiguredCache(cacheCfg),
+			ttl,
+			ttl/2,
+			cacheCfg != nil && cacheCfg.DisableExperiment,
+		),
+		ttl,
+		ttl/2,
+	)
+}
+
+// NewExperimentServiceWithDeps 更灵活的依赖注入（便于测试）
+func NewExperimentServiceWithDeps(repo repository.ExperimentRepository, ttl time.Duration, metricsTTL time.Duration) *ExperimentService {
+	if ttl <= 0 {
+		ttl = 5 * time.Minute
+	}
+	if metricsTTL <= 0 {
+		metricsTTL = ttl
+	}
+	return &ExperimentService{
+		repo:       repo,
+		cacheTTL:   ttl,
+		metricsTTL: metricsTTL,
+	}
 }
 
 // CreateExperimentInput 创建实验输入
@@ -228,14 +282,17 @@ func (s *ExperimentService) UpdateStatus(id string, status models.ExperimentStat
 	if status == models.ExpArchived {
 		fields["end_at"] = now
 	}
-	return s.repo.UpdateExperimentFields(id, fields)
+	if err := s.repo.UpdateExperimentFields(id, fields); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Assign 分流（返回变体与创意信息）
 func (s *ExperimentService) Assign(id string, userKey string) (*AssignedVariant, error) {
-	exp, err := s.repo.GetExperimentWithVariants(id)
-	if err != nil {
-		return nil, fmt.Errorf("experiment not found: %w", err)
+	var exp models.Experiment
+	if err := s.loadExperimentWithVariants(context.Background(), id, &exp); err != nil {
+		return nil, err
 	}
 	if exp.Status != models.ExpActive {
 		return nil, fmt.Errorf("experiment not active")
@@ -244,10 +301,7 @@ func (s *ExperimentService) Assign(id string, userKey string) (*AssignedVariant,
 	bucket := randBucket(userKey)
 	for _, v := range exp.Variants {
 		if bucket >= v.BucketStart && bucket <= v.BucketEnd {
-			asset, err := s.repo.FindAssetWithTaskByID(v.CreativeID)
-			if err != nil {
-				return &AssignedVariant{Variant: v, Asset: nil}, nil
-			}
+			asset, _ := s.loadAssetWithTask(context.Background(), v.CreativeID)
 			return &AssignedVariant{Variant: v, Asset: asset}, nil
 		}
 	}
@@ -270,7 +324,6 @@ func (s *ExperimentService) GetMetrics(id string) (interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("experiment not found: %w", err)
 	}
-
 	metrics, err := s.repo.ListMetrics(exp.ID)
 	if err != nil {
 		return nil, err
@@ -321,4 +374,20 @@ func (s *ExperimentService) incMetric(expUUID string, creativeID uint, isImpress
 	metric.UpdatedAt = time.Now()
 
 	return s.repo.SaveMetric(metric)
+}
+
+func (s *ExperimentService) loadExperimentWithVariants(ctx context.Context, uuid string, dst *models.Experiment) error {
+	if dst == nil {
+		return fmt.Errorf("nil experiment dst")
+	}
+	exp, err := s.repo.GetExperimentWithVariants(uuid)
+	if err != nil {
+		return fmt.Errorf("experiment not found: %w", err)
+	}
+	*dst = *exp
+	return nil
+}
+
+func (s *ExperimentService) loadAssetWithTask(ctx context.Context, id uint) (*models.CreativeAsset, error) {
+	return s.repo.FindAssetWithTaskByID(id)
 }
