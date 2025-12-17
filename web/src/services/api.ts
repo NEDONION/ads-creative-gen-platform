@@ -19,9 +19,11 @@ import type {
   ExperimentAssignData,
   TraceListData,
   TraceItem,
+  WarmupStats,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
+const FALLBACK_API_BASE = import.meta.env.VITE_API_BASE_FALLBACK || 'http://localhost:4000/api/v1';
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE,
@@ -84,6 +86,43 @@ const cachedGet = async <T>(url: string, params?: Record<string, any>): Promise<
   const response = await apiClient.get<T>(url, { params });
   setCache(cacheKey, response.data);
   return response.data;
+};
+
+const normalizeWarmupResponse = (payload: any): ApiResponse<WarmupStats> => {
+  // 尝试把字符串解析成 JSON
+  if (typeof payload === 'string') {
+    try {
+      const parsed = JSON.parse(payload);
+      return normalizeWarmupResponse(parsed);
+    } catch {
+      return { code: -1, message: payload };
+    }
+  }
+
+  const extractStats = (val: any): WarmupStats | undefined => {
+    if (!val || typeof val !== 'object') return undefined;
+    if ('runs' in val || 'recent' in val) return val as WarmupStats;
+    return undefined;
+  };
+
+  // 先尝试直接取 WarmupStats
+  const direct = extractStats(payload);
+  if (direct) return { code: 0, data: direct };
+
+  // 尝试 { data: WarmupStats }
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    const stats = extractStats((payload as any).data);
+    const codeRaw = (payload as any).code;
+    const code = typeof codeRaw === 'number' ? codeRaw : Number(codeRaw ?? 0);
+    if (stats) return { code: code ?? 0, data: stats, message: (payload as any).message };
+  }
+
+  // 兜底：如果有 message 则返回
+  if (payload && typeof payload === 'object' && 'message' in payload) {
+    return { code: -1, message: (payload as { message?: string }).message };
+  }
+
+  return { code: -1, message: 'Invalid warmup response' };
 };
 
 export const creativeAPI = {
@@ -168,6 +207,47 @@ export const traceAPI = {
   },
   detail: async (traceId: string): Promise<ApiResponse<TraceItem>> => {
     return cachedGet<ApiResponse<TraceItem>>(`/model_traces/${traceId}`);
+  },
+};
+
+export const warmupAPI = {
+  status: async (): Promise<ApiResponse<WarmupStats>> => {
+    const call = async (base: string): Promise<any> => {
+      const res = await axios.get<ApiResponse<WarmupStats> | WarmupStats | { message?: string }>(`${base}/warmup/status`, {
+        headers: { Accept: 'application/json' },
+      });
+      return res.data;
+    };
+
+    let payload = await call(API_BASE);
+    console.log('[warmup/status] raw payload:', payload);
+
+    // 若返回 HTML（可能是前端入口），尝试 fallback base
+    if (typeof payload === 'string' && payload.toLowerCase().includes('<!doctype')) {
+      console.warn('[warmup/status] got HTML, retry with fallback base:', FALLBACK_API_BASE);
+      payload = await call(FALLBACK_API_BASE);
+      console.log('[warmup/status] fallback payload:', payload);
+    }
+
+    return normalizeWarmupResponse(payload);
+  },
+  run: async (): Promise<ApiResponse<WarmupStats>> => {
+    const call = async (base: string): Promise<any> => {
+      const res = await axios.post<ApiResponse<WarmupStats> | WarmupStats | { message?: string }>(`${base}/warmup/run`);
+      return res.data;
+    };
+
+    let payload = await call(API_BASE);
+    console.log('[warmup/run] raw payload:', payload);
+
+    if (typeof payload === 'string' && payload.toLowerCase().includes('<!doctype')) {
+      console.warn('[warmup/run] got HTML, retry with fallback base:', FALLBACK_API_BASE);
+      payload = await call(FALLBACK_API_BASE);
+      console.log('[warmup/run] fallback payload:', payload);
+    }
+
+    clearCache();
+    return normalizeWarmupResponse(payload);
   },
 };
 

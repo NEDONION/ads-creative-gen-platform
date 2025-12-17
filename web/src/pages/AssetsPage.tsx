@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { creativeAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import type { AssetData } from '../types';
-import LanguageSwitch from '../components/LanguageSwitch';
+import Header from '../components/Header';
 import { useI18n } from '../i18n';
 
 const AssetsPage: React.FC = () => {
@@ -125,14 +125,7 @@ const AssetsPage: React.FC = () => {
       <Sidebar />
 
       <div className="main-content">
-        <div className="header">
-          <h1 className="page-title">{t('headerAssets')}</h1>
-          <div className="user-info">
-            <LanguageSwitch />
-            <div className="avatar">A</div>
-            <span>{t('admin')}</span>
-          </div>
-        </div>
+        <Header title={t('headerAssets')} />
 
         <div className="content">
           <div className="compact-layout">

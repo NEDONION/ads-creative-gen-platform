@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { experimentAPI, creativeAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import type { ExperimentMetrics, Experiment } from '../types';
-import LanguageSwitch from '../components/LanguageSwitch';
+import Header from '../components/Header';
 import { useI18n } from '../i18n';
 
 const ExperimentsPage: React.FC = () => {
@@ -218,14 +218,7 @@ const ExperimentsPage: React.FC = () => {
       <Sidebar />
 
       <div className="main-content">
-        <div className="header">
-          <h1 className="page-title">{t('headerExperiments')}</h1>
-          <div className="user-info">
-            <LanguageSwitch />
-            <div className="avatar">A</div>
-            <span>{t('admin')}</span>
-          </div>
-        </div>
+        <Header title={t('headerExperiments')} />
 
         <div className="content">
           <div className="compact-layout">

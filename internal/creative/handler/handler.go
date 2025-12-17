@@ -39,6 +39,11 @@ func NewCreativeHandler() *CreativeHandler {
 	}
 }
 
+// Service 暴露 service 用于预热等场景（只读操作）
+func (h *CreativeHandler) Service() *creative.CreativeService {
+	return h.service
+}
+
 // GenerateCopywriting 生成文案候选
 func (h *CreativeHandler) GenerateCopywriting(c *gin.Context) {
 	var req GenerateCopywritingRequest

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { creativeAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
-import LanguageSwitch from '../components/LanguageSwitch';
+import Header from '../components/Header';
 import { useI18n } from '../i18n';
 import type {
   ConfirmCopywritingRequest,
@@ -256,14 +256,7 @@ const CreativeGeneratorPage: React.FC = () => {
       <Sidebar />
 
       <div className="main-content">
-        <div className="header">
-          <h1 className="page-title">{t('headerCreative')}</h1>
-          <div className="user-info">
-            <LanguageSwitch />
-            <div className="avatar">A</div>
-            <span>{t('admin')}</span>
-          </div>
-        </div>
+        <Header title={t('headerCreative')} />
 
         <div className="content">
           <div className="generator-shell">

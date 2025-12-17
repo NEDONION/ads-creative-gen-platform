@@ -22,6 +22,11 @@ func NewExperimentHandler() *ExperimentHandler {
 	}
 }
 
+// Service 暴露内部 service 供预热使用
+func (h *ExperimentHandler) Service() *service.ExperimentService {
+	return h.service
+}
+
 // CreateExperiment 创建实验
 func (h *ExperimentHandler) CreateExperiment(c *gin.Context) {
 	var req CreateExperimentRequest

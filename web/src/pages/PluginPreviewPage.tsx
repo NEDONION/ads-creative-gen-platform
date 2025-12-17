@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
-import LanguageSwitch from '../components/LanguageSwitch';
+import Header from '../components/Header';
 import { useI18n } from '../i18n';
 import type { Experiment } from '../types';
 
@@ -334,14 +334,7 @@ const PluginPreviewPage: React.FC = () => {
       <Sidebar />
 
       <div className="main-content">
-        <div className="header">
-          <h1 className="page-title">{t('resourcesTitle')}</h1>
-          <div className="user-info">
-            <LanguageSwitch />
-            <div className="avatar">A</div>
-            <span>{t('admin')}</span>
-          </div>
-        </div>
+        <Header title={t('resourcesTitle')} />
 
         <div className="content">
           <div className="compact-layout">

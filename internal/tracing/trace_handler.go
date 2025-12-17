@@ -17,6 +17,11 @@ func NewTraceHandler() *TraceHandler {
 	}
 }
 
+// Service 暴露 service 供预热使用
+func (h *TraceHandler) Service() *TraceService {
+	return h.service
+}
+
 // List traces
 func (h *TraceHandler) ListTraces(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))

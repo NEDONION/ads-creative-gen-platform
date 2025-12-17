@@ -8,6 +8,7 @@ import ExperimentsPage from './pages/ExperimentsPage';
 import ExperimentCreatePage from './pages/ExperimentCreatePage';
 import TracePage from './pages/TracePage';
 import PluginPreviewPage from './pages/PluginPreviewPage';
+import WarmupPage from './pages/WarmupPage';
 import { I18nProvider } from './i18n';
 
 const App: React.FC = () => {
@@ -23,6 +24,7 @@ const App: React.FC = () => {
           <Route path="/experiments/new" element={<ExperimentCreatePage />} />
           <Route path="/traces" element={<TracePage />} />
           <Route path="/plugin-preview" element={<PluginPreviewPage />} />
+          <Route path="/warmup" element={<WarmupPage />} />
         </Routes>
       </Router>
     </I18nProvider>

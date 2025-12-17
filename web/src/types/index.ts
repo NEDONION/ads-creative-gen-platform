@@ -251,3 +251,21 @@ export interface TraceListData {
   page: number;
   page_size: number;
 }
+
+export interface WarmupRecord {
+  started_at: string;
+  duration: number;
+  success: boolean;
+  errors?: string[];
+  actions_run: string[];
+}
+
+export interface WarmupStats {
+  runs: number;
+  successes: number;
+  failures: number;
+  last_run?: string;
+  last_success?: string;
+  last_error?: string;
+  recent: WarmupRecord[];
+}

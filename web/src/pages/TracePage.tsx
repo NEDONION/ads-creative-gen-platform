@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import { traceAPI } from '../services/api';
 import type { TraceItem } from '../types';
-import LanguageSwitch from '../components/LanguageSwitch';
+import Header from '../components/Header';
 import { useI18n } from '../i18n';
 
 const statusColor = (status: string) => {
@@ -83,14 +83,7 @@ const TracePage: React.FC = () => {
     <div className="app">
       <Sidebar />
       <div className="main-content">
-        <div className="header">
-          <h1 className="page-title">{t('headerTraces')}</h1>
-          <div className="user-info">
-            <LanguageSwitch />
-            <div className="avatar">A</div>
-            <span>{t('admin')}</span>
-          </div>
-        </div>
+        <Header title={t('headerTraces')} />
 
         <div className="content">
           <div className="compact-layout">

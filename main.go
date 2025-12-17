@@ -1,15 +1,18 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"ads-creative-gen-platform/config"
 	creativehandler "ads-creative-gen-platform/internal/creative/handler"
 	experimenthandler "ads-creative-gen-platform/internal/experiment/handler"
 	"ads-creative-gen-platform/internal/middleware"
 	"ads-creative-gen-platform/internal/tracing"
+	"ads-creative-gen-platform/internal/warmup"
 	"ads-creative-gen-platform/pkg/database"
 
 	"github.com/gin-gonic/gin"
@@ -43,6 +46,26 @@ func main() {
 	creativeHandler := creativehandler.NewCreativeHandler()
 	experimentHandler := experimenthandler.NewExperimentHandler()
 	traceHandler := tracing.NewTraceHandler()
+
+	// 启动预热任务：保持 DB / 缓存温热
+	var sqlDB *sql.DB
+	if database.DB != nil {
+		sqlDB, _ = database.DB.DB()
+	}
+	warmupManager := warmup.New(
+		warmup.Config{
+			Interval: 10 * time.Minute,
+			Timeout:  2 * time.Second,
+		},
+		warmup.Targets{
+			DB:         sqlDB,
+			GormDB:     database.DB,
+			Creative:   creativeHandler.Service(),
+			Experiment: experimentHandler.Service(),
+			Trace:      traceHandler.Service(),
+		},
+	)
+	warmupManager.Start()
 
 	// 健康检查
 	r.GET("/health", func(c *gin.Context) {
@@ -91,17 +114,40 @@ func main() {
 		// Trace 调用链接口（目前为示例数据）
 		v1.GET("/model_traces", traceHandler.ListTraces)
 		v1.GET("/model_traces/:id", traceHandler.GetTrace)
+
+		// 预热状态
+		v1.GET("/warmup/status", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"code": 0,
+				"data": warmupManager.Stats(),
+			})
+		})
+		// 手动触发预热
+		v1.POST("/warmup/run", func(c *gin.Context) {
+			warmupManager.RunNow()
+			c.JSON(200, gin.H{
+				"code": 0,
+				"data": warmupManager.Stats(),
+			})
+		})
 	}
 
 	// 静态文件服务 - 托管前端
-	// React 路由使用 /assets 作为前端页面路径，防止与静态资源目录冲突导致 404。
-	r.GET("/assets", func(c *gin.Context) {
+	r.GET("/assets/*filepath", func(c *gin.Context) {
+		path := c.Param("filepath")
+		// 根路径或目录请求时返回前端入口，避免 404
+		if path == "" || path == "/" {
+			c.File("./web/dist/index.html")
+			return
+		}
+		full := "./web/dist/assets" + path
+		if _, err := os.Stat(full); err == nil {
+			c.File(full)
+			return
+		}
+		// 未找到文件时回退到 SPA
 		c.File("./web/dist/index.html")
 	})
-	r.GET("/assets/", func(c *gin.Context) {
-		c.File("./web/dist/index.html")
-	})
-	r.Static("/assets", "./web/dist/assets")
 	r.StaticFile("/favicon.ico", "./web/dist/favicon.ico")
 	r.StaticFile("/vite.svg", "./web/dist/vite.svg")
 	r.StaticFile("/experiment-widget.js", "./web/dist/experiment-widget.js")

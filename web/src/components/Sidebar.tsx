@@ -40,6 +40,10 @@ const Sidebar: React.FC = () => {
           <i className="fas fa-project-diagram"></i>
           <span>{t('navTraces')}</span>
         </NavLink>
+        <NavLink to="/warmup" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <i className="fas fa-fire"></i>
+          <span>{t('navWarmup')}</span>
+        </NavLink>
         <NavLink to="/plugin-preview" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <i className="fas fa-flask"></i>
           <span>{t('previewPlugin')}</span>

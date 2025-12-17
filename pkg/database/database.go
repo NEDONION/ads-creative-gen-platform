@@ -92,6 +92,7 @@ func MigrateTables() {
 		// 链路表
 		&models.ModelTrace{},
 		&models.ModelTraceStep{},
+		&models.WarmupRecord{},
 
 		// 关系表
 		&models.ProjectMember{},

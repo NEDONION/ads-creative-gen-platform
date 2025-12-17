@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { creativeAPI, experimentAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
-import LanguageSwitch from '../components/LanguageSwitch';
+import Header from '../components/Header';
 import { useI18n } from '../i18n';
 
 // 统计卡片组件
@@ -241,14 +241,7 @@ const DashboardPage: React.FC = () => {
       <Sidebar />
 
       <div className="main-content">
-        <div className="header">
-          <h1 className="page-title">{t('headerDashboard')}</h1>
-          <div className="user-info">
-            <LanguageSwitch />
-            <div className="avatar">A</div>
-            <span>{t('admin')}</span>
-          </div>
-        </div>
+        <Header title={t('headerDashboard')} />
 
         <div className="content">
           <div className="dashboard-layout">
