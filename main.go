@@ -18,6 +18,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func getWarmupTimeout() time.Duration {
+	if val := os.Getenv("WARMUP_TIMEOUT"); val != "" {
+		if d, err := time.ParseDuration(val); err == nil {
+			return d
+		}
+	}
+	return 10 * time.Second
+}
+
 func main() {
 	// 加载配置
 	config.LoadConfig()
@@ -55,7 +64,7 @@ func main() {
 	warmupManager := warmup.New(
 		warmup.Config{
 			Interval: 10 * time.Minute,
-			Timeout:  2 * time.Second,
+			Timeout:  getWarmupTimeout(),
 		},
 		warmup.Targets{
 			DB:         sqlDB,

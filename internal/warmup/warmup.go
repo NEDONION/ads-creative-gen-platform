@@ -109,52 +109,86 @@ func (m *Manager) runOnce() {
 
 	var actions []string
 	var errs []string
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	addErr := func(msg string) {
+		mu.Lock()
+		errs = append(errs, msg)
+		mu.Unlock()
+	}
+	addAction := func(msg string) {
+		mu.Lock()
+		actions = append(actions, msg)
+		mu.Unlock()
+	}
 
 	// 1) DB ping + 核心表轻查询
 	if m.target.DB != nil {
-		actions = append(actions, "db:ping")
+		addAction("db:ping")
 		if _, err := m.target.DB.ExecContext(ctx, "SELECT 1"); err != nil {
-			errs = append(errs, "db ping: "+err.Error())
+			addErr("db ping: " + err.Error())
 		}
 
 		coreTables := []string{"creative_tasks", "creative_assets", "experiments", "model_traces"}
 		for _, tbl := range coreTables {
-			actions = append(actions, "db:"+tbl)
-			if _, err := m.target.DB.ExecContext(ctx, "SELECT id FROM "+tbl+" LIMIT 1"); err != nil {
-				errs = append(errs, tbl+": "+err.Error())
-			}
+			t := tbl
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				addAction("db:" + t)
+				if _, err := m.target.DB.ExecContext(ctx, "SELECT id FROM "+t+" LIMIT 1"); err != nil {
+					addErr(t + ": " + err.Error())
+				}
+			}()
 		}
 	}
 
 	// 2) 续命缓存：第一页任务/素材/实验/trace
 	if m.target.Creative != nil {
-		actions = append(actions, "cache:tasks")
-		_, _, err := m.target.Creative.ListAllTasks(service.ListTasksQuery{Page: 1, PageSize: 20})
-		if err != nil {
-			errs = append(errs, "tasks: "+err.Error())
-		}
-		actions = append(actions, "cache:assets")
-		_, _, err = m.target.Creative.ListAllAssets(service.ListAssetsQuery{Page: 1, PageSize: 20})
-		if err != nil {
-			errs = append(errs, "assets: "+err.Error())
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			addAction("cache:tasks")
+			_, _, err := m.target.Creative.ListAllTasks(service.ListTasksQuery{Page: 1, PageSize: 20})
+			if err != nil {
+				addErr("tasks: " + err.Error())
+			}
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			addAction("cache:assets")
+			_, _, err := m.target.Creative.ListAllAssets(service.ListAssetsQuery{Page: 1, PageSize: 20})
+			if err != nil {
+				addErr("assets: " + err.Error())
+			}
+		}()
 	}
 
 	if m.target.Experiment != nil {
-		actions = append(actions, "cache:experiments")
-		_, err := m.target.Experiment.ListExperiments(1, 20, "")
-		if err != nil {
-			errs = append(errs, "experiments: "+err.Error())
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			addAction("cache:experiments")
+			if _, err := m.target.Experiment.ListExperiments(1, 20, ""); err != nil {
+				addErr("experiments: " + err.Error())
+			}
+		}()
 	}
 
 	if m.target.Trace != nil {
-		actions = append(actions, "cache:traces")
-		_, err := m.target.Trace.List(1, 20, "", "", "", "")
-		if err != nil {
-			errs = append(errs, "traces: "+err.Error())
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			addAction("cache:traces")
+			if _, err := m.target.Trace.List(1, 20, "", "", "", ""); err != nil {
+				addErr("traces: " + err.Error())
+			}
+		}()
 	}
+
+	wg.Wait()
 
 	record := Record{
 		StartedAt:  start,
